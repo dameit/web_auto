@@ -14,6 +14,7 @@ import header_title from './components/header_title.vue'
 export default {
   name: 'App',
   components: {
+    // 等价于 header_title : header_title
     header_title
   }
 }

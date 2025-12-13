@@ -49,7 +49,6 @@
 
 <script>
 export default {
-  name: "LoginView",
   data() {
     return {
       // 表单数据
@@ -119,7 +118,7 @@ export default {
   transform: translateX(-50%);
   width: 60px;
   height: 3px;
-  background: linear-gradient(to right, #667eea, #764ba2);
+  background: linear-gradient(to right, #5e8fbc, #6e97de);
   border-radius: 2px;
 }
 

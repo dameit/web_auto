@@ -41,7 +41,7 @@ export default {
 }
 
 .main-page-title {
-  margin: 0;
+  margin: 0px 20px;
   font-size: 20px;
   font-weight: bold;
   letter-spacing: 1px;
