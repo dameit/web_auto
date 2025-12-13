@@ -1,33 +1,35 @@
 <template>
-  <!-- 标题栏容器 -->
-  <header class="header">
-    <h1 class="main-page-title">web自动化操作平台</h1>
-  </header>
+  <!-- 使用标题栏组件 -->
+  <header_title />
+  
+  <!-- 路由视图 - 页面内容在这里显示 -->
+  <router-view />
 </template>
 
+<script>
+  // 从当前目录（即 src 目录）下的 components 文件夹中，导入名为 header_title.vue 的文件
+  // 并将其默认导出（export default）的内容赋值给一个名为 header_title 的变量，建议同名
+import header_title from './components/header_title.vue'
 
-<style lang="scss">
-/* 标题栏容器 - 固定在顶部 */
-header {
-  position: fixed;      /* 固定定位 */
-  top: 0;               /* 紧贴顶部 */
-  left: 0;              /* 紧贴左侧 */
-  width: 100%;          /* 占满整个宽度 */
-  height: 60px;         /* 设置高度 */
-  background-color: #409EFF;  /* 背景色（蓝色） */
-  color: white;         /* 文字颜色 */
-  display: flex;        /* 弹性布局 */
-  align-items: center;  /* 垂直居中 */
-  justify-content: center; /* 水平居中 */
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1); /* 阴影效果 */
-  z-index: 1000;        /* 确保在最上层 */
+export default {
+  name: 'App',
+  components: {
+    header_title
+  }
+}
+</script>
+
+<style>
+/* 全局样式，确保页面内容不被标题栏遮挡 */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* 标题文字样式 */
-.main-page-title {
-  margin: 0;            /* 去除默认边距 */
-  font-size: 20px;      /* 字体大小 */
-  font-weight: bold;    /* 加粗 */
-  letter-spacing: 1px;  /* 字间距 */
+/* 为所有页面内容添加顶部边距，避免被标题栏遮挡 */
+.router-view-content {
+  margin-top: 70px;
+  padding: 20px;
 }
 </style>
