@@ -1,18 +1,17 @@
-import { fileURLToPath, URL } from 'node:url'
-
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    vue(),
-    vueDevTools(),
+    vue({
+      // 禁用Vite的HMR客户端覆盖层
+      hmr: false,
+    })
   ],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    },
-  },
+  // 或者全局禁用所有客户端覆盖层
+  server: {
+    hmr: {
+      overlay: false, // 禁用错误覆盖层
+    }
+  }
 })
