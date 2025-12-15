@@ -22,6 +22,7 @@
         <!-- 密码输入框 -->
         <div class="form-group">
           <label for="password">密码</label>
+          <!-- v-model="form.password" 双向数据绑定，最重要！ 将输入框的值与Vue数据 form.password 实时同步 -->
           <input
             id="password"
             type="password"
