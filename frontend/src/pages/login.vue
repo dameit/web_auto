@@ -49,6 +49,9 @@
 </template>
 
 <script>
+// 导入API
+import { login } from '@/api'
+
 export default {
   data() {
     return {
@@ -57,16 +60,72 @@ export default {
         username: "",
         password: "",
       },
+      isLoading: false,    // 加载状态
     };
   },
   methods: {
     // 处理登录
-    handleLogin() {
+    async handleLogin() {
       console.log("登录信息:", this.form);
       // 这里可以添加实际的登录逻辑，比如API调用
-      alert(`尝试登录 - 用户名: ${this.form.username}`);
+      // 设置加载状态
+      this.isLoading = true
+      try {
+        console.log('正在登录，提交数据:', this.form)
+        // 3. 调用登录API
+        const result = await login(this.form.username, this.form.password)
+        console.log('登录成功，返回数据:', result)
+        // 4. 处理登录成功
+        this.handleLoginSuccess(result)
+      } catch (error) {
+        console.error('登录失败:', error)
+        // 5. 处理登录失败
+        this.handleLoginError(error)
+      } finally {
+        // 无论成功失败，都取消加载状态
+        this.isLoading = false
+      }
       // 登录成功后通常跳转到主页
       // this.$router.push('/home')
+    },
+    handleLoginSuccess(result) {
+      // 保存token到本地存储
+      if (result.token) {
+        localStorage.setItem('auth_token', result.token)
+        localStorage.setItem('user_info', JSON.stringify(result.user || {}))
+        
+        // 设置axios默认请求头（后续所有请求自动携带token）
+        const axios = require('axios')
+        axios.defaults.headers.common['Authorization'] = `Bearer ${result.token}`
+      }
+      
+      // 显示成功提示
+      this.showSuccessMessage('登录成功！')
+      
+      // 跳转到主页（延迟1秒，让用户看到成功提示）
+      setTimeout(() => {
+        this.$router.push('/home')
+      }, 1000)
+    },
+    
+    // 处理登录失败
+    handleLoginError(error) {
+      // 显示错误信息
+      this.errorMessage = error.message || '登录失败，请检查用户名和密码'
+      
+      // 可以针对不同错误类型做不同处理
+      if (error.message.includes('网络')) {
+        this.errorMessage = '网络连接失败，请检查网络设置'
+      }
+    },
+    
+    // 显示成功消息
+    showSuccessMessage(message) {
+      // 可以使用更优雅的提示方式，这里先用alert
+      alert(message)
+      
+      // 如果安装了UI库（如Element Plus），可以这样：
+      // this.$message.success(message)
     },
     // 处理注册
     handleRegister() {
