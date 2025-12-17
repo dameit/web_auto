@@ -5,6 +5,11 @@
       <!-- 标题 -->
       <h1 class="login-title">web自动化操作平台</h1>
 
+      <!-- 错误提示 -->
+      <div v-if="errorMessage" class="error-message">
+        {{ errorMessage }}
+      </div>
+
       <!-- 登录表单 -->
       <form class="login-form" @submit.prevent="handleLogin">
         <!-- 用户名输入框 -->
@@ -14,6 +19,7 @@
             id="username"
             type="text"
             v-model="form.username"
+            @input="clearErrorMessage"
             placeholder="请输入用户名"
             required
           />
@@ -22,11 +28,11 @@
         <!-- 密码输入框 -->
         <div class="form-group">
           <label for="password">密码</label>
-          <!-- v-model="form.password" 双向数据绑定，最重要！ 将输入框的值与Vue数据 form.password 实时同步 -->
           <input
             id="password"
             type="password"
             v-model="form.password"
+            @input="clearErrorMessage"
             placeholder="请输入密码"
             required
           />
@@ -34,11 +40,18 @@
 
         <!-- 按钮区域 -->
         <div class="button-group">
-          <button type="submit" class="btn btn-login">登录</button>
+          <button 
+            type="submit" 
+            class="btn btn-login" 
+            :disabled="isLoading"
+          >
+            {{ isLoading ? '登录中...' : '登录' }}
+          </button>
           <button
             type="button"
             class="btn btn-register"
             @click="handleRegister"
+            :disabled="isLoading"
           >
             注册
           </button>
@@ -61,72 +74,162 @@ export default {
         password: "",
       },
       isLoading: false,    // 加载状态
+      errorMessage: '',    // 错误信息
     };
   },
+
   methods: {
     // 处理登录
     async handleLogin() {
       console.log("登录信息:", this.form);
-      // 这里可以添加实际的登录逻辑，比如API调用
+      
+      // 清空之前的错误信息
+      this.errorMessage = '';
+      
+      // 表单验证
+      if (!this.validateForm()) {
+        return;
+      }
+      
       // 设置加载状态
-      this.isLoading = true
+      this.isLoading = true;
+      
       try {
-        console.log('正在登录，提交数据:', this.form)
-        // 3. 调用登录API
-        const result = await login(this.form.username, this.form.password)
-        console.log('登录成功，返回数据:', result)
-        // 4. 处理登录成功
-        this.handleLoginSuccess(result)
+        console.log('正在登录，提交数据:', this.form);
+        // 调用登录API
+        const result = await login(this.form.username, this.form.password);
+        console.log('登录成功，返回数据:', result);
+        
+        // 处理登录成功
+        await this.handleLoginSuccess(result);
+        
       } catch (error) {
-        console.error('登录失败:', error)
-        // 5. 处理登录失败
-        this.handleLoginError(error)
+        console.error('登录失败:', error);
+        // 处理登录失败
+        this.handleLoginError(error);
       } finally {
         // 无论成功失败，都取消加载状态
-        this.isLoading = false
+        this.isLoading = false;
       }
-      // 登录成功后通常跳转到主页
-      // this.$router.push('/home')
     },
-    handleLoginSuccess(result) {
-      // 保存token到本地存储
-      if (result.token) {
-        localStorage.setItem('auth_token', result.token)
-        localStorage.setItem('user_info', JSON.stringify(result.user || {}))
-        
-        // 设置axios默认请求头（后续所有请求自动携带token）
-        const axios = require('axios')
-        axios.defaults.headers.common['Authorization'] = `Bearer ${result.token}`
+    
+    // 表单验证
+    validateForm() {
+      if (!this.form.username.trim()) {
+        this.errorMessage = '请输入用户名';
+        return false;
       }
       
-      // 显示成功提示
-      this.showSuccessMessage('登录成功！')
+      if (!this.form.password.trim()) {
+        this.errorMessage = '请输入密码';
+        return false;
+      }
       
-      // 跳转到主页（延迟1秒，让用户看到成功提示）
-      setTimeout(() => {
-        this.$router.push('/home')
-      }, 1000)
+      // 可以添加更多验证规则
+      if (this.form.username.length < 3) {
+        this.errorMessage = '用户名至少需要3个字符';
+        return false;
+      }
+      
+      if (this.form.password.length < 6) {
+        this.errorMessage = '密码至少需要6个字符';
+        return false;
+      }
+      
+      return true;
+    },
+    
+    // 处理登录成功
+    async handleLoginSuccess(result) {
+      // 检查API返回的数据
+      if (!result || !result.user) {
+        this.errorMessage = '登录失败：服务器返回数据异常';
+        return;
+      }
+      
+      try {
+        // 确保用户信息包含用户名
+        const userInfo = {
+          username: this.form.username,
+          ...result.user
+        };
+        
+        console.log('保存用户信息到 localStorage:', userInfo);
+        localStorage.setItem('user_info', JSON.stringify(userInfo));
+        
+        // 如果有token，保存token
+        if (result.token) {
+          localStorage.setItem('auth_token', result.token);
+        }
+        
+        // 显示成功提示
+        // this.showSuccessMessage('登录成功！');
+        
+        // 延迟跳转，让用户看到成功提示
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // 跳转到主页
+        this.$router.push('/home');
+        
+      } catch (error) {
+        console.error('保存用户信息失败:', error);
+        this.errorMessage = '登录失败：保存用户信息时出错';
+      }
     },
     
     // 处理登录失败
     handleLoginError(error) {
-      // 显示错误信息
-      this.errorMessage = error.message || '登录失败，请检查用户名和密码'
+      console.error('登录失败详情:', error);
       
-      // 可以针对不同错误类型做不同处理
-      if (error.message.includes('网络')) {
-        this.errorMessage = '网络连接失败，请检查网络设置'
+      // 根据错误类型显示不同的错误信息
+      if (error.response) {
+        // 服务器返回了错误响应
+        const status = error.response.status;
+        const data = error.response.data;
+        
+        if (status === 401) {
+          this.errorMessage = data.message || '用户名或密码错误';
+        } else if (status === 400) {
+          this.errorMessage = data.message || '请求参数错误';
+        } else if (status === 404) {
+          this.errorMessage = '登录接口不存在';
+        } else if (status >= 500) {
+          this.errorMessage = '服务器错误，请稍后重试';
+        } else {
+          this.errorMessage = `登录失败: ${status}`;
+        }
+        
+      } else if (error.request) {
+        // 请求已发送但没有收到响应
+        this.errorMessage = '网络连接失败，请检查网络设置';
+      } else {
+        // 其他错误
+        this.errorMessage = error.message || '登录失败，请稍后重试';
       }
+      
+      // 显示错误提示
+      // this.showErrorMessage(this.errorMessage);
     },
     
     // 显示成功消息
     showSuccessMessage(message) {
-      // 可以使用更优雅的提示方式，这里先用alert
-      alert(message)
-      
-      // 如果安装了UI库（如Element Plus），可以这样：
-      // this.$message.success(message)
+      // 这里先用alert，你可以替换成更优雅的方式
+      alert(message);
     },
+    
+    // 显示错误消息
+    showErrorMessage(message) {
+      // 这里可以换成你的UI组件库的提示方式
+      console.error('登录错误:', message);
+      // 使用alert作为简单提示
+      alert(message);
+    },
+    
+    // 清空错误信息
+    clearErrorMessage() {
+      this.errorMessage = '';
+    },
+    
     // 处理注册
     handleRegister() {
       console.log("跳转到注册页面");
@@ -139,7 +242,12 @@ export default {
 
 <style lang="scss" scoped>
 .login-container {
-  /* 让登录容器占满整个视口高度并居中 */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1001;
   min-height: 100vh;
   display: flex;
   justify-content: center;
@@ -148,7 +256,6 @@ export default {
 }
 
 .login-box {
-  /* 登录框样式 */
   width: 100%;
   max-width: 400px;
   padding: 40px;
@@ -159,7 +266,6 @@ export default {
 }
 
 .login-title {
-  /* 标题样式 */
   text-align: center;
   margin: 0 0 30px 0;
   color: #333;
@@ -170,7 +276,6 @@ export default {
 }
 
 .login-title::after {
-  /* 标题下方的装饰线 */
   content: "";
   position: absolute;
   bottom: 0;
@@ -182,52 +287,69 @@ export default {
   border-radius: 2px;
 }
 
+/* 错误信息样式 */
+.error-message {
+  background-color: #fee;
+  color: #f56c6c;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #fbc4c4;
+  font-size: 14px;
+  text-align: center;
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
 .login-form {
-  /* 表单样式 */
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
 
 .form-group {
-  /* 每个表单组的样式 */
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
 .form-group label {
-  /* 标签样式 */
   color: #555;
   font-weight: 500;
   font-size: 14px;
 }
 
 .form-group input {
-  /* 输入框样式 */
   padding: 12px 16px;
   border: 2px solid #e0e0e0;
   border-radius: 8px;
   font-size: 16px;
   transition: all 0.3s ease;
   outline: none;
-}
-
-.form-group input:focus {
-  /* 输入框获取焦点时的样式 */
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  
+  &:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+  
+  &:disabled {
+    background-color: #f5f5f5;
+    cursor: not-allowed;
+  }
 }
 
 .button-group {
-  /* 按钮组样式 */
   display: flex;
   gap: 16px;
   margin-top: 10px;
 }
 
 .btn {
-  /* 按钮基础样式 */
   flex: 1;
   padding: 14px;
   border: none;
@@ -237,31 +359,33 @@ export default {
   cursor: pointer;
   transition: all 0.3s ease;
   text-align: center;
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+  }
 }
 
 .btn-login {
-  /* 登录按钮样式 */
   background: linear-gradient(to right, #667eea, #764ba2);
   color: white;
-}
-
-.btn-login:hover {
-  /* 登录按钮悬停效果 */
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+  }
 }
 
 .btn-register {
-  /* 注册按钮样式 */
   background-color: white;
   color: #667eea;
   border: 2px solid #667eea !important;
-}
-
-.btn-register:hover {
-  /* 注册按钮悬停效果 */
-  background-color: #f8f9ff;
-  transform: translateY(-2px);
+  
+  &:hover:not(:disabled) {
+    background-color: #f8f9ff;
+    transform: translateY(-2px);
+  }
 }
 
 /* 淡入动画 */

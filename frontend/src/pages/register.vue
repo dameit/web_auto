@@ -190,8 +190,13 @@ export default {
 
 <style lang="scss" scoped>
 .register-container {
-  height: calc(100vh - 60px);
-  margin-top: 60px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1001;
+  min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;

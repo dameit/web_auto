@@ -23,12 +23,42 @@ export const login = async (username, password) => {
   }
 }
 
-// 注册API（如果需要）
+// 注册API
 export const register = async (userData) => {
   try {
     const response = await apiClient.post('/register', userData)
     return response.data
   } catch (error) {
     throw new Error(error.response?.data?.message || '注册失败')
+  }
+}
+
+// 保存BMC配置API
+export const bmc_save = async (username, ip, _username, _password) => {
+  try {
+    const response = await apiClient.post('/home/bmc_save', {
+      username,
+      ip,
+      _username,
+      _password
+    })
+    return response.data
+  } catch (error) {
+    throw new Error(error.response?.data?.message || '保存BMC配置失败')
+  }
+}
+
+// 保存OS配置API
+export const os_save = async (username, ip, _username, _password) => {
+  try {
+    const response = await apiClient.post('/home/os_save', {
+      username,
+      ip,
+      _username,
+      _password
+    })
+    return response.data
+  } catch (error) {
+    throw new Error(error.response?.data?.message || '保存OS配置失败')
   }
 }
