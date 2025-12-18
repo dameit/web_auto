@@ -60,3 +60,7 @@ class ConfigRead():
         }
 
         return redfish_path
+    
+    def file_save_path(self):
+        config = self.config_load()
+        return config.get('file_save_path', 'save_path')

@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import login from '../pages/login.vue'
 import register from '../pages/register.vue'
 import home from '../pages/home.vue'
+import test_cases_save from '@/pages/test_cases_save.vue'
 
 const routes = [
   {
@@ -24,6 +25,11 @@ const routes = [
   {
     path: '/home',
     component: home
+  },
+
+  {
+    path: '/test-cases/save',
+    component: test_cases_save
   }
 ]
 

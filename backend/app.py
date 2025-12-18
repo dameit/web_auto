@@ -11,6 +11,7 @@ from common.ssh_connect import ssh_connect
 global app 
 app = Flask(__name__)
 CORS(app)
+config = ConfigRead()
 
 def db_connect():    
     conn = MysqlConnect()
@@ -18,7 +19,6 @@ def db_connect():
     return conn
 
 def read_redfish():
-    config = ConfigRead()
     return config.redfish_load()
 
 def hash_password(password):
@@ -184,3 +184,28 @@ def test_connect():
             return jsonify({'success': True, 'message': 'OS连接成功'}), 200
         else:
             return jsonify({'success': False, 'message': 'OS连接失败'}), 400
+
+@app.route('/api/test_cases/file_upload', methods=['POST'])
+def file_upload():
+    file_upload_path = config.file_save_path()
+    os.makedirs(file_upload_path, exist_ok=True)
+    file = request.files.get('file')
+    
+    try:
+        # 拼接文件保存的完整路径（目录+原文件名）
+        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        # 保存文件到服务器本地
+        file.save(file_path)
+        # 返回成功响应（包含文件保存路径）
+        return jsonify({
+            "code": 0,
+            "msg": "文件上传成功",
+            "server_path": file_path  # 返回服务器上的保存路径
+        }), 200
+    
+    except Exception as e:
+        return jsonify({
+            "code": 2,
+            "msg": f"文件上传失败：{str(e)}"
+        }), 500
+    
