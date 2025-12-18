@@ -2,10 +2,14 @@ import { createRouter, createWebHistory } from 'vue-router'
 // 导入登录页面组件
 import login from '../pages/login.vue'
 import register from '../pages/register.vue'
-import left_layout from '@/components/left_layout.vue'
 import home from '../pages/home.vue'
 
 const routes = [
+  {
+    path: '/',
+    redirect: '/home', // 将根路径重定向到/home，默认访问首页
+  },
+
   // 其他路由...
   {
     path: '/login',  // 访问路径
@@ -18,7 +22,7 @@ const routes = [
   },
 
   {
-    path: '/home',  // 默认子路由，当访问'/home'时，在left_layout的<router-view>中显示home
+    path: '/home',
     component: home
   }
 ]

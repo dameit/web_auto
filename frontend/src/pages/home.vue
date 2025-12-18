@@ -251,7 +251,7 @@
 </template>
 
 <script>
-import { bmc_save, os_save } from '@/api'
+import { bmc_save, os_save, bmc_test_connect, os_test_connect } from '@/api'
 
 export default {
   name: "HomeView",
@@ -316,19 +316,30 @@ export default {
       target.status = "disconnected";
 
       try {
+        // new Promise(...)：创建一个 “异步等待容器”
+        // 让当前的异步函数暂停执行 1500 毫秒（1.5 秒），等时间到了之后，再继续执行函数里后续的代码
+        // 暂停1.5秒，再执行后续逻辑
         await new Promise((resolve) => setTimeout(resolve, 1500));
 
-        const randomSuccess = Math.random() > 0.3;
+        let testResult;
+        // 调用 API 测试连接
+        if (type === 'bmc'){
+          testResult = await bmc_test_connect(this.bmc.ip, this.bmc.username, this.bmc.password);
+        }
+        else{
+          testResult = await os_test_connect(this.os.ip, this.os.username, this.os.password);
+        }
 
-        if (randomSuccess) {
+        if (testResult) {
           target.status = "success";
           target.connected = true;
+          this.saveConnection(type)
         } else {
           target.status = "failure";
           target.connected = false;
         }
 
-        const message = randomSuccess
+        const message = testResult
           ? `✅ ${type.toUpperCase()} 连接成功！`
           : `❌ ${type.toUpperCase()} 连接失败，请检查信息！`;
         console.log(message);
@@ -372,10 +383,6 @@ export default {
 
         if (saveResult.success) {
           alert(`${type.toUpperCase()} 配置保存成功！`);
-
-          // 更新状态
-          target.status = "success";
-          target.connected = true;
 
           console.log(`${type.toUpperCase()} 配置已保存到数据库`);
         } else {

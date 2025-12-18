@@ -5,19 +5,21 @@ import hashlib
 import os, sys
 from common.config_read import *
 from common.mysql_connect import *
+from common.my_post import my_post
+from common.ssh_connect import ssh_connect
 
 global app 
 app = Flask(__name__)
 CORS(app)
 
-def read_and_connect():
-    # 获取config.ini中的数据库配置
-    db_config = ConfigRead()
-    db_config = db_config.config_load()
-    
+def db_connect():    
     conn = MysqlConnect()
     conn = conn.get_connection()
     return conn
+
+def read_redfish():
+    config = ConfigRead()
+    return config.redfish_load()
 
 def hash_password(password):
     """对密码进行哈希处理（生产环境应加盐）"""
@@ -33,7 +35,7 @@ def register():
     if not username or not password:
         return jsonify({'success': False, 'message': '用户名和密码不能为空'}), 400
 
-    conn = read_and_connect()
+    conn = db_connect()
     cursor = conn.cursor()
 
     try:
@@ -70,7 +72,7 @@ def login():
     if not username or not password:
         return jsonify({'success': False, 'message': '用户名和密码不能为空'}), 400
 
-    conn = read_and_connect()
+    conn = db_connect()
     cursor = conn.cursor(dictionary=True)
 
     try:
@@ -118,7 +120,7 @@ def save_config():
     if not username:
         return jsonify({'success': False, 'message': '用户名不能为空'}), 400
 
-    conn = read_and_connect()
+    conn = db_connect()
     cursor = conn.cursor(dictionary=True)
 
     try:
@@ -152,3 +154,33 @@ def save_config():
         conn.rollback()
         print(f"配置保存出错: {e}")
         return jsonify({'success': False, 'message': '服务器内部错误'}), 500
+
+@app.route('/api/home/os_test_connect', methods=['POST'])
+@app.route('/api/home/bmc_test_connect', methods=['POST'])
+def test_connect():
+    # 从请求体中获取数据
+    data = request.get_json()
+    
+    ip = data.get('ip', '').strip()
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+
+    if request.path == "/api/home/bmc_test_connect":
+        redfish = read_redfish()
+        session_post_api = redfish["session_post_api"].replace("ip", ip)
+        request_body = {
+            "UserName": username,
+            "Password": password
+        }
+        print(f"BMC测试连接: api为{session_post_api}, 请求体为{request_body}")
+        response = my_post(session_post_api, request_body=request_body)
+        if int(response.status_code) in range(200, 210): 
+            return jsonify({'success': True, 'message': 'BMC连接成功'}), 200
+        else:
+            return jsonify({'success': False, 'message': 'BMC连接失败'}), 400
+    else:
+        print(f"OS测试连接: IP为{ip}, 用户名为{username}, 密码为{password}")
+        if ssh_connect(ip, username=username, password=password):
+            return jsonify({'success': True, 'message': 'OS连接成功'}), 200
+        else:
+            return jsonify({'success': False, 'message': 'OS连接失败'}), 400

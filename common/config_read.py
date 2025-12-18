@@ -21,21 +21,7 @@ class ConfigRead():
             # 读取配置文件
             self.config.read(self.config_file, encoding='utf-8')
             
-            # 检查是否有database部分
-            if 'database' not in self.config:
-                raise KeyError("配置文件中缺少 [database] 部分")
-            
-            # 提取数据库配置
-            db_config = {
-                'host': self.config.get('database', 'host'),
-                'port': self.config.getint('database', 'port', fallback=3306),
-                'username': self.config.get('database', 'username'),
-                'password': self.config.get('database', 'password'),
-                'database': self.config.get('database', 'database'),
-            }
-            
-            # print("数据库配置加载成功")
-            return db_config
+            return self.config
             
         except FileNotFoundError as e:
             print(f"错误: {e}")
@@ -46,3 +32,31 @@ class ConfigRead():
         except Exception as e:
             print(f"加载配置文件时出错: {e}")
             return False
+
+    def database_load(self):
+        config = self.config_load()
+
+        # 检查是否有database部分
+        if 'database' not in config:
+            raise KeyError("配置文件中缺少 [database] 部分")
+        
+        # 提取数据库配置
+        db_config = {
+            'host': config.get('database', 'host'),
+            'port': config.getint('database', 'port', fallback=3306),
+            'username': config.get('database', 'username'),
+            'password': config.get('database', 'password'),
+            'database': config.get('database', 'database'),
+        }
+        
+        # print("数据库配置加载成功")
+        return db_config
+
+    def redfish_load(self):
+        config = self.config_load()
+
+        redfish_path = {
+            'session_post_api': config.get('redfish_path', 'session_post_api')
+        }
+
+        return redfish_path

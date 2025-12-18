@@ -9,7 +9,7 @@ class MysqlConnect():
     def get_connection(self):
         try:
             config_read = ConfigRead()
-            self.db_config = config_read.config_load()
+            self.db_config = config_read.database_load()
             connection = mysql.connector.connect(
                 host = self.db_config["host"],
                 port = self.db_config["port"],

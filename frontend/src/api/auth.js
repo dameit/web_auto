@@ -62,3 +62,31 @@ export const os_save = async (username, ip, _username, _password) => {
     throw new Error(error.response?.data?.message || '保存OS配置失败')
   }
 }
+
+// 测试BMC连接API
+export const bmc_test_connect = async (ip, username, password) => {
+  try {
+    const response = await apiClient.post('/home/bmc_test_connect', {
+      ip,
+      username,
+      password
+    })
+    return true
+  } catch (error) {
+    throw new Error(error.response?.data?.message || '测试BMC连接失败')
+  }
+}
+
+// 测试OS连接API
+export const os_test_connect = async (ip, username, password) => {
+  try {
+    const response = await apiClient.post('/home/os_test_connect', {
+      ip,
+      username,
+      password
+    })
+    return true
+  } catch (error) {
+    throw new Error(error.response?.data?.message || '测试OS连接失败')
+  }
+}
