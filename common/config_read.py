@@ -37,7 +37,7 @@ class ConfigRead():
         config = self.config_load()
 
         # 检查是否有database部分
-        if 'database' not in config:
+        if config is False or not config.has_section('database'):
             raise KeyError("配置文件中缺少 [database] 部分")
         
         # 提取数据库配置

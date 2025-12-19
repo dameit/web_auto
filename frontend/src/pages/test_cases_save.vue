@@ -294,6 +294,9 @@
 </template>
 
 <script>
+import { file_save, start_test } from "@/api";
+import { ElNotification } from 'element-plus'
+
 export default {
   name: "TestCasesSave",
   data() {
@@ -352,6 +355,18 @@ export default {
       const formData = new FormData();
       // 核心：将选中的文件对象添加到FormData，key为"file"（后端需对应这个key）
       formData.append("file", this.selectedFile);
+      // 添加用户名
+      const userInfo = localStorage.getItem("user_info");
+      const user = JSON.parse(userInfo);
+      const username = user.username;
+      formData.append("username", username);
+      const file_save_result = await file_save(formData);
+      if (file_save_result.success) {
+        console.log(`文件已保存到数据库`, file_save_result);
+      } 
+      else {
+        console.log(`保存失败: ${file_save_result.message || "未知错误"}`);
+      }
     },
 
     clearFile() {
@@ -386,6 +401,7 @@ export default {
       return fileTypes[extension] || `${extension.toUpperCase()}文件`;
     },
 
+    // 是否选中
     toggleSetting(settingId) {
       const setting = this.settings.find((s) => s.id === settingId);
       if (setting) {
@@ -405,9 +421,9 @@ export default {
       });
     },
 
-    startTest() {
+    async startTest() {
       if (!this.hasSelectedSettings) {
-        this.$notify({
+        ElNotification({
           title: "提示",
           message: "请至少选择一个配置项进行测试",
           type: "warning",
@@ -421,10 +437,20 @@ export default {
 
       console.log("开始测试以下配置项:", selectedSettings);
 
-      // 这里可以添加实际开始测试的逻辑
-      // 例如：this.runConfigurationTest();
+      const userInfo = localStorage.getItem("user_info");
+      const user = JSON.parse(userInfo);
+      const bmc_ip = user.bmc_ip;
+      const bmc_username = user.bmc_username;
+      const bmc_password = user.bmc_password;
+      const test_result = await start_test(bmc_ip, bmc_username, bmc_password, selectedSettings)
+      if (test_result.success) {
+        console.log(`web自动化操作通过`, test_result);
+      } 
+      else {
+        console.log(`web自动化操作失败: ${test_result.message || "未知错误"}`);
+      }
 
-      this.$notify({
+      ElNotification({
         title: "开始测试",
         message: `开始测试 ${this.selectedCount} 个配置项...`,
         type: "success",

@@ -188,24 +188,86 @@ def test_connect():
 @app.route('/api/test_cases/file_upload', methods=['POST'])
 def file_upload():
     file_upload_path = config.file_save_path()
-    os.makedirs(file_upload_path, exist_ok=True)
+    project_root = os.path.dirname(os.path.abspath(__file__))
+    # 在项目根目录下创建file_upload文件夹
+    file_upload_path = os.path.join(project_root, file_upload_path)
+    try:
+        os.makedirs(file_upload_path, exist_ok=True)
+        print(f"目录已确认存在: {file_upload_path}")
+    except Exception as e:
+        print(f"创建目录失败: {str(e)}")
     file = request.files.get('file')
+    username = request.form.get('username')
+
+    # 验证必填字段
+    if not file:
+        return jsonify({
+            "success": False,
+            "message": "请选择文件"
+        }), 400
+    
+    if not username:
+        return jsonify({
+            "success": False,
+            "message": "用户名不能为空"
+        }), 400
     
     try:
         # 拼接文件保存的完整路径（目录+原文件名）
-        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        file_path = os.path.join(file_upload_path, file.filename)
         # 保存文件到服务器本地
         file.save(file_path)
+
+        conn = db_connect()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE users 
+            SET file_save_path = %s
+            WHERE username = %s
+        """, (file_path, username))
+        conn.commit()
         # 返回成功响应（包含文件保存路径）
         return jsonify({
-            "code": 0,
-            "msg": "文件上传成功",
+            "success": True,
+            "message": "文件上传成功",
             "server_path": file_path  # 返回服务器上的保存路径
         }), 200
     
     except Exception as e:
         return jsonify({
-            "code": 2,
-            "msg": f"文件上传失败：{str(e)}"
+            "success": False,
+            "message": f"文件上传失败：{str(e)}"
         }), 500
+
+from pages.test_syslog import *
+from pages.login import *
+@app.route('/api/test_cases/start_test', methods=['POST'])
+def start_test():
+    # 配置字典，根据选中的配置执行相关函数
+    config_dict = {
+        "Syslog设置": (test_syslog, "syslog_config_auto"),
+    }
+
+    # 从请求体中获取数据
+    data = request.get_json()
     
+    ip = data.get('ip', '').strip()
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+    test_cases = data.get('test_cases')
+
+    try:
+        test_case = login_page(ip, username, password)
+        test_case.login_auto()
+        # for case in test_cases:
+        #     config_class, method_name = config_dict[case]
+        #     # 实例化页面自动操作类
+        #     config_instance = config_class()
+        #     # 动态获取方法并调用（getattr是核心）
+        #     target_method = getattr(config_instance, method_name)
+        #     result = target_method()
+        test_case.driver_quit()
+        return jsonify({'success': True, 'message': '自动配置执行成功'}), 200
+    except Exception as e:
+        print(e)
+        return jsonify({'success': False, 'message': '自动配置过程中出错'}), 400

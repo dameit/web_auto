@@ -81,12 +81,59 @@ export const bmc_test_connect = async (ip, username, password) => {
 export const os_test_connect = async (ip, username, password) => {
   try {
     const response = await apiClient.post('/home/os_test_connect', {
-      ip,
-      username,
-      password
+      'ip': ip,
+      'username': username,
+      'password': password
     })
     return true
   } catch (error) {
     throw new Error(error.response?.data?.message || '测试OS连接失败')
   }
 }
+
+// 保存文件API
+export const file_save = async (formData) => {
+  try {
+    const response = await apiClient.post('/test_cases/file_upload', formData, 
+    {
+      headers: {
+        "Content-Type": "multipart/form-data"
+      }
+    })
+    return response.data
+  } catch (error) {
+    throw new Error(error.response?.data?.message || '文件路径保存失败')
+  }
+}
+
+// 自动配置bmc web API
+export const start_test = async (ip, username, password, test_cases) => {
+  try {
+    const response = await apiClient.post('/test_cases/start_test', {
+      'ip': ip,
+      'username': username,
+      'password': password,
+      'test_cases': test_cases
+    },
+    {
+      timeout : 600000,
+    })
+
+    // 关键：打印完整的响应信息
+    console.log('✅ [前端] 收到响应，状态码:', response.status);
+    console.log('📦 [前端] 响应数据:', response.data);
+    console.log('🔧 [前端] 响应头:', response.headers);
+
+    // response.data 是从后端收到的 jsonify()
+    return response.data
+  } catch (error) {
+    // 更详细的错误信息
+    console.error('❌ [前端] 请求失败详情:');
+    console.error('    - 错误对象:', error);
+    console.error('    - 响应数据:', error.response?.data);
+    console.error('    - 状态码:', error.response?.status);
+    console.error('    - 请求配置:', error.config);
+    throw new Error(error.response?.data?.message || 'web自动化操作失败')
+  }
+}
+
