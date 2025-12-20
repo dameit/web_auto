@@ -244,6 +244,7 @@ from pages.test_snmp_trap import *
 from pages.test_smtp import *
 from pages.test_snmp_v1v2 import *
 from pages.test_poweron_strategy import *
+from pages.test_network import *
 from pages.login import *
 import base64
 @app.route('/api/test_cases/start_test', methods=['POST'])
@@ -254,7 +255,8 @@ def start_test():
         "Trap设置": (test_snmp_trap, "snmp_trap_config_auto"),
         "SMTP设置": (test_smtp, "smtp_config_auto"),
         "SNMP V1/V2设置": (test_snmp_v1v2, "snmp_v1v2_config_auto"),
-        "上电开机策略": (test_poweron_strategy, "poweron_strategy_auto")
+        "上电开机策略": (test_poweron_strategy, "poweron_strategy_auto"),
+        "网络设置": (test_network, "network_config_auto")
     }
 
     # 从请求体中获取数据
