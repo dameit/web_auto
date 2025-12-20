@@ -240,6 +240,10 @@ def file_upload():
         }), 500
 
 from pages.test_syslog import *
+from pages.test_snmp_trap import *
+from pages.test_smtp import *
+from pages.test_snmp_v1v2 import *
+from pages.test_poweron_strategy import *
 from pages.login import *
 import base64
 @app.route('/api/test_cases/start_test', methods=['POST'])
@@ -247,6 +251,10 @@ def start_test():
     # 配置字典，根据选中的配置执行相关函数
     config_dict = {
         "Syslog设置": (test_syslog, "syslog_config_auto"),
+        "Trap设置": (test_snmp_trap, "snmp_trap_config_auto"),
+        "SMTP设置": (test_smtp, "smtp_config_auto"),
+        "SNMP V1/V2设置": (test_snmp_v1v2, "snmp_v1v2_config_auto"),
+        "上电开机策略": (test_poweron_strategy, "poweron_strategy_auto")
     }
 
     # 从请求体中获取数据
@@ -287,5 +295,6 @@ def start_test():
             'screenshots': screenshot_data_all
         }), 200
     except Exception as e:
+        test_case.driver_quit()
         print(e)
         return jsonify({'success': False, 'message': '自动配置过程中出错'}), 400

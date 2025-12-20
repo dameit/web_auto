@@ -390,6 +390,8 @@
 <script>
 import { file_save, start_test } from "@/api";
 import { ElNotification } from "element-plus";
+// 添加delay函数
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default {
   name: "TestCasesSave",
@@ -405,9 +407,9 @@ export default {
       settings: [
         { id: "syslog", name: "Syslog设置", icon: "📋", selected: false },
         { id: "trap", name: "Trap设置", icon: "🚨", selected: false },
-        { id: "snmp", name: "SNMP设置", icon: "📡", selected: false },
-        { id: "email", name: "邮件告警", icon: "📧", selected: false },
-        { id: "power", name: "通电开机策略", icon: "🔌", selected: false },
+        { id: "snmp", name: "SNMP V1/V2设置", icon: "📡", selected: false },
+        { id: "email", name: "SMTP设置", icon: "📧", selected: false },
+        { id: "power", name: "上电开机策略", icon: "🔌", selected: false },
         { id: "network", name: "网络设置", icon: "🌐", selected: false },
         { id: "user", name: "用户/用户组", icon: "👥", selected: false },
         { id: "ldap", name: "LDAP", icon: "🔐", selected: false },
@@ -640,7 +642,6 @@ export default {
           }
         } catch (error) {
           console.error(`下载第 ${i + 1} 张图片失败:`, error);
-          failCount++;
         }
       }
     },
