@@ -241,6 +241,7 @@ def file_upload():
 
 from pages.test_syslog import *
 from pages.login import *
+import base64
 @app.route('/api/test_cases/start_test', methods=['POST'])
 def start_test():
     # 配置字典，根据选中的配置执行相关函数
@@ -256,18 +257,35 @@ def start_test():
     password = data.get('password', '').strip()
     test_cases = data.get('test_cases')
 
+    # 创建截图保存的文件夹
+    screenshot_save_path = config.screenshot_save_path()
+    project_root = os.path.dirname(os.path.abspath(__file__))
+    # 在项目根目录下创建screenshot_save文件夹
+    screenshot_save_path = os.path.join(project_root, screenshot_save_path)
+    try:
+        os.makedirs(screenshot_save_path, exist_ok=True)
+        print(f"目录已确认存在: {screenshot_save_path}")
+    except Exception as e:
+        print(f"创建目录失败: {str(e)}")
+
+    screenshot_data_all = []
     try:
         test_case = login_page(ip, username, password)
-        test_case.login_auto()
-        # for case in test_cases:
-        #     config_class, method_name = config_dict[case]
-        #     # 实例化页面自动操作类
-        #     config_instance = config_class()
-        #     # 动态获取方法并调用（getattr是核心）
-        #     target_method = getattr(config_instance, method_name)
-        #     result = target_method()
+        shared_driver = test_case.login_auto()
+        for case in test_cases:
+            config_class, method_name = config_dict[case]
+            # 实例化页面自动操作类
+            config_instance = config_class(driver=shared_driver)
+            # 动态获取方法并调用（getattr是核心）
+            target_method = getattr(config_instance, method_name)
+            shared_driver, screenshot_base64 = target_method()
+            screenshot_data_all.append(screenshot_base64)
         test_case.driver_quit()
-        return jsonify({'success': True, 'message': '自动配置执行成功'}), 200
+        return jsonify({
+            'success': True, 
+            'message': '自动配置执行成功',
+            'screenshots': screenshot_data_all
+        }), 200
     except Exception as e:
         print(e)
         return jsonify({'success': False, 'message': '自动配置过程中出错'}), 400

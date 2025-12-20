@@ -2,8 +2,8 @@ from pages.base import base_page
 from common.config_read import ConfigRead
 
 class login_page(base_page):
-    def __init__(self, ip, username, password):
-        super().__init__()
+    def __init__(self, ip, username, password, driver=None):
+        super().__init__(driver)
         self.ip, self.username, self.password = ip, username, password
     
     def open_browser(self):
@@ -37,3 +37,4 @@ class login_page(base_page):
         self.input_password()
         self.login_click()
         self.handle_alert()
+        return self.webdriver

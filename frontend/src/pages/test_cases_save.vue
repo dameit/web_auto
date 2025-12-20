@@ -124,34 +124,60 @@
             </h3>
             <div class="screenshot-count" v-if="beforeScreenshots.length > 0">
               {{ beforeScreenshots.length }}张截图
+              <span v-if="selectedBeforeCount > 0" class="selected-count">
+                (已选中{{ selectedBeforeCount }}张)
+              </span>
             </div>
           </div>
 
           <div class="panel-actions">
-            <button @click="addBeforeScreenshot" class="action-btn add-btn">
-              <span class="action-icon">+</span>
-              添加截图
-            </button>
-            <button
-              @click="clearBeforeScreenshots"
-              class="action-btn clear-btn"
-              :disabled="beforeScreenshots.length === 0"
+            <!-- 修改：优化按钮布局 -->
+            <div
+              class="batch-controls-wrapper"
+              v-if="beforeScreenshots.length > 0"
             >
-              <span class="action-icon">🗑️</span>
-              清空
-            </button>
+              <div class="batch-controls">
+                <button
+                  @click="selectAllBefore"
+                  class="action-btn select-all-btn"
+                >
+                  <span class="action-icon">✓</span>
+                  <span class="action-text">全选</span>
+                </button>
+                <button
+                  @click="deselectAllBefore"
+                  class="action-btn deselect-all-btn"
+                >
+                  <span class="action-icon">✗</span>
+                  <span class="action-text">取消</span>
+                </button>
+                <button
+                  @click="downloadSelectedBefore"
+                  class="action-btn download-btn"
+                  :disabled="selectedBeforeCount === 0"
+                >
+                  <span class="action-icon">⬇</span>
+                  <span class="action-text">下载</span>
+                </button>
+              </div>
+              <button
+                @click="clearBeforeScreenshots"
+                class="action-btn clear-btn"
+              >
+                <span class="action-icon">🗑️</span>
+                <span class="action-text">清空</span>
+              </button>
+            </div>
           </div>
         </div>
 
         <div class="screenshot-container">
+          <!-- 修改：移除所有提示信息 -->
           <div
             v-if="beforeScreenshots.length === 0"
             class="empty-screenshot-placeholder"
-            @click="addBeforeScreenshot"
           >
             <div class="placeholder-icon">📷</div>
-            <div class="placeholder-text">点击添加测试前截图</div>
-            <div class="placeholder-hint">支持所有图片格式，无数量限制</div>
           </div>
 
           <div v-else class="screenshot-scroll-container">
@@ -160,36 +186,42 @@
                 v-for="(screenshot, index) in beforeScreenshots"
                 :key="'before-' + index"
                 class="screenshot-item"
+                :class="{ selected: screenshot.selected }"
+                @click="toggleBeforeScreenshotSelection(index)"
               >
                 <div class="screenshot-wrapper">
+                  <!-- 添加选中标记 -->
+                  <div class="selection-indicator" v-if="screenshot.selected">
+                    <span class="checkmark">✓</span>
+                  </div>
                   <img
                     :src="screenshot.url"
                     :alt="screenshot.name"
                     class="screenshot-image"
                     @load="onImageLoad"
+                    @click.stop="previewImage('before', index)"
                   />
                   <div class="screenshot-overlay">
-                    <button
-                      @click.stop="removeBeforeScreenshot(index)"
-                      class="remove-btn"
-                      title="删除截图"
-                    >
-                      <span class="remove-icon">×</span>
-                    </button>
-                    <span class="screenshot-name">{{ screenshot.name }}</span>
+                    <div class="overlay-left">
+                      <button
+                        @click.stop="previewImage('before', index)"
+                        class="preview-btn"
+                        title="放大查看"
+                      >
+                        <span class="preview-icon">🔍</span>
+                      </button>
+                    </div>
+                    <div class="overlay-right">
+                      <button
+                        @click.stop="removeBeforeScreenshot(index)"
+                        class="remove-btn"
+                        title="删除截图"
+                      >
+                        <span class="remove-icon">×</span>
+                      </button>
+                    </div>
                   </div>
                   <div class="screenshot-index">{{ index + 1 }}</div>
-                </div>
-              </div>
-
-              <!-- 添加更多截图按钮 -->
-              <div
-                class="screenshot-item add-more-item"
-                @click="addBeforeScreenshot"
-              >
-                <div class="add-more-content">
-                  <span class="add-icon">+</span>
-                  <span class="add-text">添加更多截图</span>
                 </div>
               </div>
             </div>
@@ -281,6 +313,68 @@
       </div>
     </div>
 
+    <!-- 图片预览模态框 -->
+    <div
+      v-if="previewVisible"
+      class="image-preview-modal"
+      @click="closePreview"
+    >
+      <div class="preview-content" @click.stop>
+        <div class="preview-header">
+          <span class="preview-title">{{ currentPreview.name }}</span>
+          <button @click="closePreview" class="close-preview-btn" title="关闭">
+            <span class="close-icon">×</span>
+          </button>
+        </div>
+
+        <div class="preview-body">
+          <div class="image-container">
+            <img
+              :src="currentPreview.url"
+              :alt="currentPreview.name"
+              class="preview-image"
+              @click.stop
+            />
+          </div>
+
+          <div class="preview-navigation" v-if="totalPreviews > 1">
+            <button
+              @click="prevImage"
+              class="nav-btn prev-btn"
+              :disabled="previewIndex === 0"
+            >
+              <span class="nav-icon">←</span>
+            </button>
+
+            <div class="preview-counter">
+              {{ previewIndex + 1 }} / {{ totalPreviews }}
+            </div>
+
+            <button
+              @click="nextImage"
+              class="nav-btn next-btn"
+              :disabled="previewIndex === totalPreviews - 1"
+            >
+              <span class="nav-icon">→</span>
+            </button>
+          </div>
+
+          <div class="preview-actions">
+            <button
+              @click="downloadCurrentPreview"
+              class="action-btn download-btn"
+            >
+              <span class="action-icon">⬇</span>
+              <span class="action-text">下载图片</span>
+            </button>
+            <button @click="closePreview" class="action-btn cancel-btn">
+              <span class="action-text">关闭</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 隐藏的文件输入元素，用于截图上传 -->
     <input
       type="file"
@@ -295,12 +389,11 @@
 
 <script>
 import { file_save, start_test } from "@/api";
-import { ElNotification } from 'element-plus'
+import { ElNotification } from "element-plus";
 
 export default {
   name: "TestCasesSave",
   data() {
-    // 后端返回了所有信息，login.vue登录时将这些信息存储到了user_info中
     const userInfo = localStorage.getItem("user_info");
     const user = JSON.parse(userInfo);
     const bmc_ip = user.bmc_ip;
@@ -325,7 +418,15 @@ export default {
       ],
       beforeScreenshots: [],
       afterScreenshots: [],
-      screenshotTarget: "before", // 'before' 或 'after'
+      screenshotTarget: "after", // 只用于测试后截图
+      // 图片预览相关数据
+      previewVisible: false,
+      previewType: "", // 'before' 或 'after'
+      previewIndex: 0,
+      currentPreview: {
+        url: "",
+        name: ""
+      }
     };
   },
   computed: {
@@ -335,8 +436,75 @@ export default {
     hasSelectedSettings() {
       return this.selectedCount > 0;
     },
+    // 添加这个计算属性
+    selectedBeforeCount() {
+      return this.beforeScreenshots.filter((screenshot) => screenshot.selected)
+        .length;
+    },
+    // 获取当前预览类型的截图数组
+    currentPreviews() {
+      return this.previewType === 'before' ? this.beforeScreenshots : this.afterScreenshots;
+    },
+    // 总预览图片数量
+    totalPreviews() {
+      return this.currentPreviews.length;
+    }
   },
   methods: {
+    // 图片预览相关方法
+    previewImage(type, index) {
+      this.previewType = type;
+      this.previewIndex = index;
+      this.updateCurrentPreview();
+      this.previewVisible = true;
+      
+      // 防止背景滚动
+      document.body.style.overflow = 'hidden';
+    },
+    updateCurrentPreview() {
+      if (this.currentPreviews.length > 0 && this.previewIndex >= 0 && this.previewIndex < this.totalPreviews) {
+        const screenshot = this.currentPreviews[this.previewIndex];
+        this.currentPreview = {
+          url: screenshot.url,
+          name: screenshot.name
+        };
+      }
+    },
+    
+    prevImage() {
+      if (this.previewIndex > 0) {
+        this.previewIndex--;
+        this.updateCurrentPreview();
+      }
+    },
+    
+    nextImage() {
+      if (this.previewIndex < this.totalPreviews - 1) {
+        this.previewIndex++;
+        this.updateCurrentPreview();
+      }
+    },
+    
+    closePreview() {
+      this.previewVisible = false;
+      document.body.style.overflow = '';
+    },
+
+    downloadCurrentPreview() {
+      if (!this.currentPreview.url) return;
+      
+      const screenshot = {
+        name: this.currentPreview.name,
+        url: this.currentPreview.url
+      };
+      
+      this.downloadSingleImage(screenshot);
+    },
+
+
+
+
+
     triggerFileInput() {
       this.$refs.fileInput.click();
     },
@@ -363,8 +531,7 @@ export default {
       const file_save_result = await file_save(formData);
       if (file_save_result.success) {
         console.log(`文件已保存到数据库`, file_save_result);
-      } 
-      else {
+      } else {
         console.log(`保存失败: ${file_save_result.message || "未知错误"}`);
       }
     },
@@ -421,6 +588,127 @@ export default {
       });
     },
 
+    // 新增：切换测试前截图的选中状态
+    toggleBeforeScreenshotSelection(index) {
+      if (this.beforeScreenshots[index]) {
+        this.beforeScreenshots[index].selected =
+          !this.beforeScreenshots[index].selected;
+      }
+    },
+
+    // 新增：全选测试前截图
+    selectAllBefore() {
+      this.beforeScreenshots.forEach((screenshot) => {
+        screenshot.selected = true;
+      });
+    },
+
+    // 新增：取消全选测试前截图
+    deselectAllBefore() {
+      this.beforeScreenshots.forEach((screenshot) => {
+        screenshot.selected = false;
+      });
+    },
+
+    // 修改：下载选中的测试前截图
+    async downloadSelectedBefore() {
+      const selectedScreenshots = this.beforeScreenshots.filter(
+        (s) => s.selected
+      );
+
+      if (selectedScreenshots.length === 0) {
+        ElNotification({
+          title: "提示",
+          message: "请先选择要下载的截图",
+          type: "warning",
+        });
+        return;
+      }
+
+      console.log(selectedScreenshots);
+      // 批量下载
+      for (let i = 0; i < selectedScreenshots.length; i++) {
+        const screenshot = selectedScreenshots[i];
+
+        try {
+          // 下载当前图片
+          await this.downloadSingleImage(screenshot);
+
+          // 延迟一段时间，避免浏览器同时处理太多下载请求
+          if (i < selectedScreenshots.length - 1) {
+            await delay(500); // 500毫秒延迟
+          }
+        } catch (error) {
+          console.error(`下载第 ${i + 1} 张图片失败:`, error);
+          failCount++;
+        }
+      }
+    },
+
+    // 改进：下载单张图片
+    downloadSingleImage(screenshot) {
+      return new Promise((resolve, reject) => {
+        try {
+          // 直接处理 base64 数据
+          const base64Data = screenshot.url.split(",")[1];
+
+          // 将 base64 转换为 Blob
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: "image/png" });
+
+          // 创建下载链接
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+
+          // 设置下载文件名
+          const sanitizedName = this.sanitizeFileName(screenshot.name);
+          const extension = this.getImageExtension(screenshot.url);
+          link.download = `${sanitizedName}.${extension}`;
+
+          // 触发下载
+          document.body.appendChild(link);
+          link.click();
+
+          // 清理
+          setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            resolve();
+          }, 100);
+        } catch (error) {
+          reject(error);
+        }
+      });
+    },
+
+    // 调整文件名
+    sanitizeFileName(filename) {
+      // 移除非法字符
+      return filename
+        .replace(/[<>:"/\\|?*]/g, "") // 移除非法字符
+        .replace(/\s+/g, "_") // 替换空格为下划线
+        .substring(0, 100); // 限制文件名长度
+    },
+
+    // 辅助方法：获取图片扩展名
+    getImageExtension(url) {
+      if (url.startsWith("data:")) {
+        const mimeMatch = url.match(/data:image\/(\w+);/);
+        if (mimeMatch && mimeMatch[1]) {
+          return mimeMatch[1].toLowerCase();
+        }
+      }
+
+      // 默认返回png
+      return "png";
+    },
+
     async startTest() {
       if (!this.hasSelectedSettings) {
         ElNotification({
@@ -442,11 +730,19 @@ export default {
       const bmc_ip = user.bmc_ip;
       const bmc_username = user.bmc_username;
       const bmc_password = user.bmc_password;
-      const test_result = await start_test(bmc_ip, bmc_username, bmc_password, selectedSettings)
+      const test_result = await start_test(
+        bmc_ip,
+        bmc_username,
+        bmc_password,
+        selectedSettings
+      );
       if (test_result.success) {
         console.log(`web自动化操作通过`, test_result);
-      } 
-      else {
+        // 处理返回的截图数据
+        if (test_result.screenshots && test_result.screenshots.length > 0) {
+          this.processBeforeScreenshots(test_result.screenshots);
+        }
+      } else {
         console.log(`web自动化操作失败: ${test_result.message || "未知错误"}`);
       }
 
@@ -457,9 +753,41 @@ export default {
       });
     },
 
-    addBeforeScreenshot() {
-      this.screenshotTarget = "before";
-      this.$refs.screenshotInput.click();
+    // 处理测试前截图数据
+    processBeforeScreenshots(screenshotData) {
+      // 清空之前的截图
+      this.clearBeforeScreenshots();
+
+      // 根据返回的数据结构处理截图
+      // 假设返回的是base64编码的图片数组
+      screenshotData.forEach((screenshot, index) => {
+        // 根据实际返回的数据结构调整
+        // 这里假设返回的是base64字符串或URL
+        let imageUrl;
+        let imageName = `测试前截图_${index + 1}`;
+
+        if (typeof screenshot === "string") {
+          // 如果是base64字符串
+          if (screenshot.startsWith("data:image")) {
+            imageUrl = screenshot;
+          } else {
+            imageUrl = `data:image/png;base64,${screenshot}`;
+          }
+        } else if (screenshot.url) {
+          // 如果返回的是对象
+          imageUrl = screenshot.url;
+          imageName = screenshot.name || imageName;
+        }
+
+        if (imageUrl) {
+          this.beforeScreenshots.push({
+            name: imageName,
+            url: imageUrl,
+            type: "image/png",
+            size: 0,
+          });
+        }
+      });
     },
 
     addAfterScreenshot() {
@@ -484,27 +812,24 @@ export default {
         const imageUrl = URL.createObjectURL(file);
 
         const screenshot = {
-          name: `截图_${timestamp}_${i + 1}`,
+          name: `测试后截图_${timestamp}_${i + 1}`,
           url: imageUrl,
           file: file,
           type: file.type,
           size: file.size,
         };
 
-        if (this.screenshotTarget === "before") {
-          this.beforeScreenshots.push(screenshot);
-        } else {
-          this.afterScreenshots.push(screenshot);
-        }
+        // 只添加到测试后截图
+        this.afterScreenshots.push(screenshot);
       }
 
-      // 重置文件输入，以便可以再次选择相同的文件
+      // 重置文件输入
       event.target.value = "";
 
       // 显示添加成功提示
-      this.$notify({
+      ElNotification({
         title: "截图添加成功",
-        message: `成功添加 ${files.length} 张截图`,
+        message: `成功添加 ${files.length} 张测试后截图`,
         type: "success",
       });
     },
@@ -521,7 +846,7 @@ export default {
       }
       this.beforeScreenshots.splice(index, 1);
 
-      this.$notify({
+      ElNotification({
         title: "截图已删除",
         message: "测试前截图已成功删除",
         type: "info",
@@ -535,7 +860,7 @@ export default {
       }
       this.afterScreenshots.splice(index, 1);
 
-      this.$notify({
+      ElNotification({
         title: "截图已删除",
         message: "测试后截图已成功删除",
         type: "info",
@@ -551,7 +876,7 @@ export default {
       });
       this.beforeScreenshots = [];
 
-      this.$notify({
+      ElNotification({
         title: "截图已清空",
         message: "所有测试前截图已清空",
         type: "info",
@@ -567,7 +892,7 @@ export default {
       });
       this.afterScreenshots = [];
 
-      this.$notify({
+      ElNotification({
         title: "截图已清空",
         message: "所有测试后截图已清空",
         type: "info",
@@ -1004,15 +1329,18 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 18px 20px;
+  padding: 16px 20px;
   background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%);
   border-bottom: 1px solid #e2e8f0;
+  min-height: 64px;
 }
 
 .panel-title-area {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  flex: 1;
 }
 
 .panel-title {
@@ -1023,6 +1351,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
+  line-height: 1.4;
 }
 
 .panel-title-icon {
@@ -1030,56 +1359,152 @@ export default {
 }
 
 .screenshot-count {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font-size: 13px;
   color: #64748b;
-  background: #f1f5f9;
-  padding: 4px 10px;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+
+  .total-count {
+    background: #f1f5f9;
+    padding: 3px 10px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+  }
+
+  .selected-count {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+    padding: 3px 10px;
+    border-radius: 12px;
+    border: 1px solid #93c5fd;
+    color: #3b82f6;
+    font-weight: 500;
+
+    .selected-dot {
+      width: 8px;
+      height: 8px;
+      background: #3b82f6;
+      border-radius: 50%;
+    }
+  }
 }
 
 .panel-actions {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+
+  .batch-controls-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .batch-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f8fafc;
+      padding: 6px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+    }
+  }
 }
 
 .action-btn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 8px 15px;
+  padding: 6px 12px;
   border-radius: 6px;
   border: 1px solid #cbd5e1;
   background: white;
   color: #475569;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
+  height: 32px;
+  min-width: 60px;
 
   &:hover:not(:disabled) {
     transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
   }
 }
 
 .add-btn {
+  background: #f0f9ff;
+  border-color: #7dd3fc;
+  color: #0369a1;
+
   &:hover:not(:disabled) {
-    background: #f0f9ff;
-    border-color: #7dd3fc;
-    color: #0369a1;
+    background: #e0f2fe;
+    border-color: #38bdf8;
   }
 }
 
 .clear-btn {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+
   &:hover:not(:disabled) {
-    background: #fef2f2;
-    border-color: #fecaca;
-    color: #ef4444;
+    background: #fee2e2;
+    border-color: #fca5a5;
+  }
+}
+
+.select-all-btn {
+  background: #f0f9ff;
+  border-color: #7dd3fc;
+  color: #0369a1;
+  min-width: 50px;
+
+  &:hover:not(:disabled) {
+    background: #e0f2fe;
+    border-color: #38bdf8;
+  }
+}
+
+.deselect-all-btn {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+  min-width: 50px;
+
+  &:hover:not(:disabled) {
+    background: #fee2e2;
+    border-color: #fca5a5;
+  }
+}
+
+.download-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  min-width: 60px;
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+  }
+
+  &:disabled {
+    background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
   }
 }
 
@@ -1090,6 +1515,7 @@ export default {
   overflow: hidden;
 }
 
+/* 修改：简化空状态样式 */
 .empty-screenshot-placeholder {
   display: flex;
   flex-direction: column;
@@ -1097,24 +1523,14 @@ export default {
   justify-content: center;
   height: 100%;
   color: #94a3b8;
-  cursor: pointer;
   border: 2px dashed #cbd5e1;
   border-radius: 10px;
   padding: 30px;
-  transition: all 0.2s ease;
   text-align: center;
-
-  &:hover {
-    border-color: #93c5fd;
-    background: #f0f9ff;
-    color: #3b82f6;
-    transform: translateY(-2px);
-  }
 }
 
 .placeholder-icon {
   font-size: 48px;
-  margin-bottom: 15px;
   opacity: 0.7;
 }
 
@@ -1147,11 +1563,28 @@ export default {
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
 
   &:hover {
     transform: translateY(-3px);
     box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+  }
+
+  &.selected {
+    box-shadow: 0 0 0 3px #3b82f6;
+
+    .screenshot-wrapper::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(59, 130, 246, 0.1);
+      z-index: 1;
+    }
   }
 }
 
@@ -1162,13 +1595,37 @@ export default {
   background: #f8fafc;
 }
 
+/* 新增：选中指示器 */
+.selection-indicator {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  background: #3b82f6;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+
+  .checkmark {
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+  }
+}
+
 .screenshot-image {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  /* 等比缩放图片以适应容器 */
   background: #f8fafc;
   transition: opacity 0.3s ease;
+  position: relative;
+  z-index: 2;
+  cursor: pointer;
 
   &:not(.loaded) {
     opacity: 0;
@@ -1187,10 +1644,44 @@ export default {
   align-items: center;
   opacity: 0;
   transition: opacity 0.2s ease;
+  z-index: 5;
 
   .screenshot-item:hover & {
     opacity: 1;
   }
+  
+  .overlay-left,
+  .overlay-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+/* 新增：放大查看按钮 */
+.preview-btn {
+  background: rgba(59, 130, 246, 0.9);
+  color: white;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #2563eb;
+    transform: scale(1.1);
+  }
+}
+
+.preview-icon {
+  display: inline-block;
+  transform: scale(0.9);
 }
 
 .screenshot-name {
@@ -1237,6 +1728,7 @@ export default {
   justify-content: center;
   font-size: 11px;
   font-weight: 600;
+  z-index: 5;
 }
 
 .add-more-item {
@@ -1274,6 +1766,195 @@ export default {
 .add-text {
   font-size: 13px;
   font-weight: 500;
+}
+
+/* 图片预览模态框样式 */
+.image-preview-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.preview-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 0.3s ease;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.preview-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  margin-right: 20px;
+}
+
+.close-preview-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 20px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #f1f5f9;
+    color: #475569;
+  }
+}
+
+.preview-body {
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.image-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #f8fafc;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  position: relative;
+  min-height: 300px;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+}
+
+.preview-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.nav-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: white;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.preview-counter {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+  min-width: 80px;
+  text-align: center;
+}
+
+.preview-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+
+  .action-btn {
+    min-width: 120px;
+    height: 40px;
+    font-size: 14px;
+  }
+
+  .download-btn {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+
+    &:hover {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    }
+  }
+
+  .cancel-btn {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+
+    &:hover {
+      background: #e2e8f0;
+    }
+  }
+}
+
+/* 动画效果 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .hidden-file-input {
@@ -1327,6 +2008,76 @@ export default {
   .screenshot-panel {
     height: 450px;
   }
+
+  .panel-actions {
+    flex-wrap: wrap;
+
+    .batch-controls {
+      width: 100%;
+      justify-content: flex-end;
+      margin-right: 0;
+      padding-right: 0;
+      border-right: none;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+    }
+  }
+  
+  .preview-content {
+    width: 95%;
+    max-height: 85vh;
+  }
+}
+
+@media (max-width: 1100px) {
+  .top-info-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ip-info-row {
+    justify-content: center;
+  }
+
+  .file-selection-row {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 992px) {
+  .screenshots-section {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+
+  .screenshot-panel {
+    height: 450px;
+  }
+
+  .panel-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .panel-actions {
+    width: 100%;
+    justify-content: flex-end;
+
+    .batch-controls-wrapper {
+      width: 100%;
+      justify-content: space-between;
+
+      .batch-controls {
+        flex: 1;
+        justify-content: flex-start;
+      }
+    }
+  }
 }
 
 @media (max-width: 768px) {
@@ -1368,13 +2119,35 @@ export default {
   }
 
   .panel-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 15px;
+    gap: 12px;
   }
 
-  .panel-actions {
-    justify-content: flex-end;
+  .screenshot-count {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .action-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+    min-width: 50px;
+
+    .action-text {
+      font-size: 12px;
+    }
+  }
+  
+  .preview-content {
+    width: 98%;
+    max-height: 80vh;
+  }
+  
+  .preview-actions {
+    flex-direction: column;
+    
+    .action-btn {
+      width: 100%;
+    }
   }
 }
 
@@ -1388,14 +2161,40 @@ export default {
   }
 
   .panel-title-area {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 5px;
+    width: 100%;
   }
 
   .panel-actions {
     width: 100%;
-    justify-content: space-between;
+
+    .batch-controls-wrapper {
+      flex-direction: column;
+      width: 100%;
+      gap: 8px;
+
+      .batch-controls {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .clear-btn {
+        width: 100%;
+      }
+    }
+  }
+
+  .action-btn {
+    flex: 1;
+    min-width: auto;
+  }
+  
+  .preview-navigation {
+    gap: 10px;
+    
+    .nav-btn {
+      width: 36px;
+      height: 36px;
+    }
   }
 }
 </style>

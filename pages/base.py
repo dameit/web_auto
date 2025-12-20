@@ -6,24 +6,30 @@ from selenium.webdriver.edge.options import Options
 from common.config_read import ConfigRead
 
 class base_page:
-    def __init__(self):
-        options = Options()
-        options.add_argument('--ignore-certificate-errors')
-        options.add_argument('--allow-running-insecure-content')
-        # 关键：调试阶段必须注释掉或移除 --headless 参数，才能看到窗口
-        # options.add_argument('--headless')
-        options.add_argument('--disable-gpu')
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
-        options.add_argument('--log-level=3')  # 关键：控制浏览器控制台日志级别 (0:INFO, 1:WARNING, 2:ERROR, 3:FATAL)
-        options.add_argument('--silent')  # 静默模式，减少输出
-        # 可选：隐藏“Chrome正受到自动测试软件控制”的提示栏（不影响窗口显示）
-        options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        options.add_experimental_option('useAutomationExtension', False)
+    def __init__(self, driver=None):
+        if driver is not None:
+            # 如果提供了外部driver，就复用
+            self.webdriver = driver
+            print("复用现有浏览器会话")
+        else:
+            options = Options()
+            options.add_argument('--ignore-certificate-errors')
+            options.add_argument('--allow-running-insecure-content')
+            # 关键：调试阶段必须注释掉或移除 --headless 参数，才能看到窗口
+            # options.add_argument('--headless')
+            options.add_argument('--disable-gpu')
+            options.add_argument('--no-sandbox')
+            options.add_argument('--disable-dev-shm-usage')
+            options.add_argument('--log-level=3')  # 关键：控制浏览器控制台日志级别 (0:INFO, 1:WARNING, 2:ERROR, 3:FATAL)
+            options.add_argument('--silent')  # 静默模式，减少输出
+            # 可选：隐藏“Chrome正受到自动测试软件控制”的提示栏（不影响窗口显示）
+            options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            options.add_experimental_option('useAutomationExtension', False)
 
-        self.webdriver = webdriver.Edge(options=options)
-        self.webdriver.maximize_window()
-        self.webdriver.implicitly_wait(10)
+            self.webdriver = webdriver.Edge(options=options)
+            self.webdriver.maximize_window()
+        
+        self.webdriver.implicitly_wait(2)
 
         config = ConfigRead()
         self.config = config.config_load()
@@ -56,5 +62,5 @@ class base_page:
 
     def driver_quit(self):
         import time
-        time.sleep(5)
+        time.sleep(2)
         self.webdriver.quit()

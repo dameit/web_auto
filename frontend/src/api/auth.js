@@ -116,7 +116,7 @@ export const start_test = async (ip, username, password, test_cases) => {
       'test_cases': test_cases
     },
     {
-      timeout : 600000,
+      timeout : 120000,
     })
 
     // 关键：打印完整的响应信息

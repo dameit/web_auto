@@ -64,3 +64,7 @@ class ConfigRead():
     def file_save_path(self):
         config = self.config_load()
         return config.get('file_save_path', 'save_path')
+
+    def screenshot_save_path(self):
+        config = self.config_load()
+        return config.get('file_save_path', 'screenshot_save_path')
