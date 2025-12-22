@@ -334,6 +334,20 @@ export default {
           target.status = "success";
           target.connected = true;
           this.saveConnection(type)
+          const userInfo = localStorage.getItem("user_info");
+          const user = JSON.parse(userInfo);
+          if (type === 'bmc') {
+            user.bmc_ip = this.bmc.ip
+            user.bmc_username = this.bmc.username
+            user.bmc_password = this.bmc.password
+          }
+          else {
+            user.os_ip = this.os.ip
+            user.os_username = this.os.username
+            user.os_password = this.os.password
+          }
+          // 测试连接成功，更新连接信息到本地存储
+          localStorage.setItem('user_info', JSON.stringify(user))
         } else {
           target.status = "failure";
           target.connected = false;

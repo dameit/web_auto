@@ -1,27 +1,27 @@
 from pages.base import base_page
 from common.config_read import ConfigRead
-import time
 
-class test_syslog(base_page):
+class test_user_group(base_page):
     def __init__(self, driver=None):
         super().__init__(driver)
-        self.meau_expand = self.config.get("syslog_config", "meau_expand").split(', ')
-        self.path = [path.strip() for path in self.config.get("syslog_config", "path").splitlines() ]
-        self.syslog_config = [config.strip() for config in self.config.get("syslog_config", "config").splitlines()]
+        self.meau_expand = self.config.get("user_group", "meau_expand").split(', ')
+        self.path = [path.strip() for path in self.config.get("user_group", "path").splitlines() ]
+        self.user_group_config = [config.strip() for config in self.config.get("user_group", "config").splitlines()]
 
-    def syslog_config_auto(self):
+    def user_group_config_auto(self):
         # 判断 BMC设置 菜单是否展开
         self.wait_for_angular_ready()
         meau_element = self.find_element(*self.meau_expand)
         _path = self.path[1:] if "menu-show" in meau_element.get_attribute("class") else self.path
-        # 依次点击进入 syslog设置 界面
+        # 依次点击进入 用户/用户组 界面
         for path in _path:
             path_by_locator = path.split(', ')
             element = self.find_element(*path_by_locator)
             self.click_element(element=element)
         
+        import time 
         # 自动操作
-        for config in self.syslog_config:
+        for config in self.user_group_config:
             config_type_by_locator = config.split(', ')
             config_type, config_by_locator = config_type_by_locator[0], \
                 config_type_by_locator[1:3]
@@ -39,10 +39,15 @@ class test_syslog(base_page):
                 self.click_element(element=element)
             elif config_type == "input":
                 # 检测原本输入框中是否有值
+                time.sleep(1)
                 if element.get_attribute('value') != "":
                     element.clear()
                 self.input_text(element=element, text=config_type_by_locator[3])
+            elif config_type == "select_choose":
+                from selenium.webdriver.support.ui import Select
+                permission_select = Select(element)
+                permission_select.select_by_visible_text(config_type_by_locator[-1])
 
-        self.webdriver.save_screenshot(r"backend\screenshot_save\syslog_config.png")        
+        self.webdriver.save_screenshot(r"backend\screenshot_save\user_group_config.png")        
         # 返回webdriver对象，获取截图作为Base64字符串
         return self.webdriver, self.webdriver.get_screenshot_as_base64()
