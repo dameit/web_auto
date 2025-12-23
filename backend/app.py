@@ -246,6 +246,7 @@ from pages.test_snmp_v1v2 import *
 from pages.test_poweron_strategy import *
 from pages.test_network import *
 from pages.test_user_group import *
+from pages.test_ldap import *
 from pages.login import *
 import base64
 @app.route('/api/test_cases/start_test', methods=['POST'])
@@ -258,7 +259,8 @@ def start_test():
         "SNMP V1/V2设置": (test_snmp_v1v2, "snmp_v1v2_config_auto"),
         "上电开机策略": (test_poweron_strategy, "poweron_strategy_auto"),
         "网络设置": (test_network, "network_config_auto"),
-        "用户/用户组": (test_user_group, "user_group_config_auto")
+        "用户/用户组": (test_user_group, "user_group_config_auto"),
+        "LDAP/E-directory": (test_ldap, "ldap_config_auto")
     }
 
     # 从请求体中获取数据
@@ -291,7 +293,8 @@ def start_test():
             # 动态获取方法并调用（getattr是核心）
             target_method = getattr(config_instance, method_name)
             shared_driver, screenshot_base64 = target_method()
-            screenshot_data_all.append(screenshot_base64)
+            screenshot_base64 = screenshot_base64 if isinstance(screenshot_base64, list) else [screenshot_base64]
+            screenshot_data_all.extend(screenshot_base64)
         test_case.driver_quit()
         return jsonify({
             'success': True, 
