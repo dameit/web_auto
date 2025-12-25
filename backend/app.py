@@ -290,7 +290,7 @@ def start_test():
     except Exception as e:
         print(f"创建目录失败: {str(e)}")
 
-    screenshot_data_all = []
+    screenshot_data_all, screenshot_name = [], []
     try:
         test_case = login_page(ip, username, password)
         shared_driver = test_case.login_auto()
@@ -304,11 +304,13 @@ def start_test():
             shared_driver, screenshot_base64 = target_method()
             screenshot_base64 = screenshot_base64 if isinstance(screenshot_base64, list) else [screenshot_base64]
             screenshot_data_all.extend(screenshot_base64)
+            screenshot_name.extend([f"{case}_截图{i+1}" for i in range(len(screenshot_base64))])
         test_case.driver_quit()
         return jsonify({
             'success': True, 
             'message': '自动配置执行成功',
-            'screenshots': screenshot_data_all
+            'screenshots': screenshot_data_all,
+            'screenshots_name': screenshot_name
         }), 200
     except Exception as e:
         test_case.driver_quit()

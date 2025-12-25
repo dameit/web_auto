@@ -20,7 +20,7 @@
           <div class="file-select-wrapper">
             <div class="file-select-btn" @click="triggerFileInput">
               <span class="btn-icon">📁</span>
-              <span class="btn-text">选择配置文件</span>
+              <span class="btn-text">选择BMC固件文件</span>
             </div>
             <input
               type="file"
@@ -98,18 +98,101 @@
       </div>
     </div>
 
-    <!-- 开始测试按钮 -->
+    <!-- 三个测试按钮 -->
     <div class="action-section">
-      <button
-        @click="startTest"
-        class="start-test-btn"
-        :disabled="!hasSelectedSettings"
-        :class="{ disabled: !hasSelectedSettings }"
-      >
-        <span class="test-icon">▶</span>
-        <span class="test-text">开始测试</span>
-        <span class="test-subtext">({{ selectedCount }}个配置项)</span>
-      </button>
+      <div class="action-buttons-grid">
+        <!-- 刷新前测试按钮 -->
+        <button
+          @click="startTest"
+          class="action-test-btn refresh-pre-btn"
+          :class="{
+            disabled: !hasSelectedSettings || currentTestingSetting,
+            testing: currentTestingSetting,
+          }"
+        >
+          <span class="test-icon">{{
+            currentTestingSetting ? "⏳" : "▶"
+          }}</span>
+          <span class="test-text">
+            {{
+              currentTestingSetting
+                ? `正在测试：${currentTestingSetting}`
+                : "刷新前测试"
+            }}
+          </span>
+          <span class="test-subtext">
+            {{
+              currentTestingSetting
+                ? `(第${testingProgress}个/共${totalTesting}个配置项)`
+                : `(${selectedCount}个配置项)`
+            }}
+          </span>
+        </button>
+
+        <!-- 刷新BMC固件按钮 -->
+        <button
+          @click="refreshFirmware"
+          class="action-test-btn refresh-firmware-btn"
+          :class="{ disabled: !selectedFile || isRefreshingFirmware }"
+        >
+          <span class="test-icon">{{ isRefreshingFirmware ? "⏳" : "▶" }}</span>
+          <span class="test-text">
+            {{ isRefreshingFirmware ? "正在刷新固件..." : "刷新BMC固件" }}
+          </span>
+          <span class="test-subtext">
+            {{ selectedFile ? "(固件已上传)" : "(请先选择固件)" }}
+          </span>
+        </button>
+
+        <!-- 刷新后测试按钮 -->
+        <button
+          @click="afterRefreshTest"
+          class="action-test-btn refresh-post-btn"
+          :class="{ disabled: !hasSelectedSettings || isAfterTesting }"
+        >
+          <span class="test-icon">{{ isAfterTesting ? "⏳" : "▶" }}</span>
+          <span class="test-text">
+            {{ isAfterTesting ? "刷新后测试中..." : "刷新后测试" }}
+          </span>
+          <span class="test-subtext">
+            {{ `(${selectedCount}个配置项)` }}
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 日志显示区域 -->
+    <div class="test-logs-section" v-if="testLogs.length > 0 || isTesting">
+      <div class="logs-panel">
+        <div class="panel-header">
+          <div class="panel-title-area">
+            <h3 class="panel-title">
+              <span class="panel-title-icon">📝</span>
+              测试日志
+            </h3>
+          </div>
+
+          <div class="panel-actions">
+            <button
+              @click="clearTestLogs"
+              class="action-btn clear-btn"
+              :disabled="testLogs.length === 0"
+            >
+              <span class="action-icon">🗑️</span>
+              清空日志
+            </button>
+          </div>
+        </div>
+
+        <div class="logs-container">
+          <div class="logs-content" ref="logsContainer">
+            <div v-for="(log, index) in testLogs" :key="index" class="log-item">
+              <div class="log-time">{{ formatTime(log.time) }}</div>
+              <div class="log-message">{{ log.message }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 测试截图区域 -->
@@ -391,7 +474,7 @@
 import { file_save, start_test } from "@/api";
 import { ElNotification } from "element-plus";
 // 添加delay函数
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default {
   name: "TestCasesSave",
@@ -404,6 +487,12 @@ export default {
       bmcIp: bmc_ip || "请返回首页添加BMC IP",
       osIp: os_ip || "请返回首页添加OS IP",
       selectedFile: null,
+      currentTestingSetting: "", // 当前正在测试的配置项名称
+      testingProgress: 0, // 当前测试进度（第几个）
+      totalTesting: 0, // 总共要测试的数量
+      // 测试日志相关数据
+      testLogs: [],
+      isTesting: false,
       settings: [
         { id: "syslog", name: "Syslog设置", icon: "📋", selected: false },
         { id: "trap", name: "Trap设置", icon: "🚨", selected: false },
@@ -427,8 +516,8 @@ export default {
       previewIndex: 0,
       currentPreview: {
         url: "",
-        name: ""
-      }
+        name: "",
+      },
     };
   },
   computed: {
@@ -445,67 +534,104 @@ export default {
     },
     // 获取当前预览类型的截图数组
     currentPreviews() {
-      return this.previewType === 'before' ? this.beforeScreenshots : this.afterScreenshots;
+      return this.previewType === "before"
+        ? this.beforeScreenshots
+        : this.afterScreenshots;
     },
     // 总预览图片数量
     totalPreviews() {
       return this.currentPreviews.length;
-    }
+    },
   },
+
   methods: {
+    // 添加日志
+    addLog(message) {
+      const log = {
+        time: new Date(),
+        message: message,
+      };
+
+      this.testLogs.push(log);
+
+      // 滚动到底部
+      this.$nextTick(() => {
+        const container = this.$refs.logsContainer;
+        if (container) {
+          container.scrollTop = container.scrollHeight;
+        }
+      });
+    },
+    // 清空日志
+    clearTestLogs() {
+      this.testLogs = [];
+      this.isTesting = false;
+    },
+    // 格式化时间
+    formatTime(date) {
+      const d = new Date(date);
+      const year = d.getFullYear();
+      const month = (d.getMonth() + 1).toString().padStart(2, "0");
+      const day = d.getDate().toString().padStart(2, "0");
+      const hours = d.getHours().toString().padStart(2, "0");
+      const minutes = d.getMinutes().toString().padStart(2, "0");
+      const seconds = d.getSeconds().toString().padStart(2, "0");
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    },
+
     // 图片预览相关方法
     previewImage(type, index) {
       this.previewType = type;
       this.previewIndex = index;
       this.updateCurrentPreview();
       this.previewVisible = true;
-      
+
       // 防止背景滚动
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     },
     updateCurrentPreview() {
-      if (this.currentPreviews.length > 0 && this.previewIndex >= 0 && this.previewIndex < this.totalPreviews) {
+      if (
+        this.currentPreviews.length > 0 &&
+        this.previewIndex >= 0 &&
+        this.previewIndex < this.totalPreviews
+      ) {
         const screenshot = this.currentPreviews[this.previewIndex];
         this.currentPreview = {
           url: screenshot.url,
-          name: screenshot.name
+          name: screenshot.name,
         };
       }
     },
-    
+
     prevImage() {
       if (this.previewIndex > 0) {
         this.previewIndex--;
         this.updateCurrentPreview();
       }
     },
-    
+
     nextImage() {
       if (this.previewIndex < this.totalPreviews - 1) {
         this.previewIndex++;
         this.updateCurrentPreview();
       }
     },
-    
+
     closePreview() {
       this.previewVisible = false;
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     },
 
     downloadCurrentPreview() {
       if (!this.currentPreview.url) return;
-      
+
       const screenshot = {
         name: this.currentPreview.name,
-        url: this.currentPreview.url
+        url: this.currentPreview.url,
       };
-      
+
       this.downloadSingleImage(screenshot);
     },
-
-
-
-
 
     triggerFileInput() {
       this.$refs.fileInput.click();
@@ -705,7 +831,6 @@ export default {
           return mimeMatch[1].toLowerCase();
         }
       }
-
       // 默认返回png
       return "png";
     },
@@ -725,47 +850,101 @@ export default {
         .map((setting) => setting.name);
 
       console.log("开始测试以下配置项:", selectedSettings);
-
       const userInfo = localStorage.getItem("user_info");
       const user = JSON.parse(userInfo);
       const bmc_ip = user.bmc_ip;
       const bmc_username = user.bmc_username;
       const bmc_password = user.bmc_password;
-      const test_result = await start_test(
-        bmc_ip,
-        bmc_username,
-        bmc_password,
-        selectedSettings
-      );
-      if (test_result.success) {
-        console.log(`web自动化操作通过`, test_result);
-        // 处理返回的截图数据
-        if (test_result.screenshots && test_result.screenshots.length > 0) {
-          this.processBeforeScreenshots(test_result.screenshots);
-        }
-      } else {
-        console.log(`web自动化操作失败: ${test_result.message || "未知错误"}`);
-      }
+      // 先清空之前的截图
+      this.clearBeforeScreenshots();
 
-      ElNotification({
-        title: "开始测试",
-        message: `开始测试 ${this.selectedCount} 个配置项...`,
-        type: "success",
-      });
+      // 设置测试状态
+      this.isTesting = true;
+      this.totalTesting = selectedSettings.length;
+      this.testingProgress = 0;
+      this.currentTestingSetting = "";
+      // 添加开始测试日志
+      this.addLog(
+        `├── 开始测试，共选择 ${selectedSettings.length} 个配置项：${selectedSettings}`
+      );
+
+      // ********** 一个一个测 **********
+      for (let i = 0; i < selectedSettings.length; i++) {
+        const settingName = selectedSettings[i];
+        console.log(
+          `正在测试第 ${i + 1}/${
+            selectedSettings.length
+          } 个配置项: ${settingName}`
+        );
+        // 更新当前测试状态
+        this.testingProgress = i + 1;
+        this.currentTestingSetting = settingName;
+        try {
+          const test_result = await start_test(
+            bmc_ip,
+            bmc_username,
+            bmc_password,
+            [settingName]
+          );
+          if (test_result.success) {
+            // 记录成功日志
+            this.addLog(`└── ${settingName}：选项配置成功`);
+            // 处理返回的截图数据
+            if (
+              test_result.screenshots &&
+              test_result.screenshots_name &&
+              test_result.screenshots.length > 0
+            ) {
+              this.processBeforeScreenshots(
+                test_result.screenshots,
+                test_result.screenshots_name
+              );
+            }
+          } else {
+            // 记录失败日志
+            this.addLog(
+              `└── ${settingName}：选项配置失败 - ${
+                test_result.message || "未知错误"
+              }`
+            );
+          }
+        } catch (error) {
+          // 记录异常日志
+          this.addLog(`└── ${settingName}: 发生错误 - ${error.message}`);
+        }
+      }
+      // 测试完成后清除状态
+      this.currentTestingSetting = "";
+      this.testingProgress = 0;
+      this.totalTesting = 0;
+
+      // ********** 一起测 **********
+      // const test_result = await start_test(
+      //   bmc_ip,
+      //   bmc_username,
+      //   bmc_password,
+      //   selectedSettings
+      // );
+      // if (test_result.success) {
+      //   console.log(`web自动化操作通过`, test_result);
+      //   // 处理返回的截图数据
+      //   if (test_result.screenshots && test_result.screenshots_name && test_result.screenshots.length > 0) {
+      //     this.processBeforeScreenshots(test_result.screenshots, test_result.screenshots_name);
+      //   }
+      // } else {
+      //   console.log(`web自动化操作失败: ${test_result.message || "未知错误"}`);
+      // }
     },
 
     // 处理测试前截图数据
-    processBeforeScreenshots(screenshotData) {
-      // 清空之前的截图
-      this.clearBeforeScreenshots();
-
+    processBeforeScreenshots(screenshotData, screenshotName) {
       // 根据返回的数据结构处理截图
       // 假设返回的是base64编码的图片数组
       screenshotData.forEach((screenshot, index) => {
         // 根据实际返回的数据结构调整
         // 这里假设返回的是base64字符串或URL
         let imageUrl;
-        let imageName = `测试前截图_${index + 1}`;
+        let imageName = screenshotName[index];
 
         if (typeof screenshot === "string") {
           // 如果是base64字符串
@@ -1260,14 +1439,19 @@ export default {
 
 /* 开始测试按钮区域 */
 .action-section {
-  display: flex;
-  justify-content: center;
   margin-bottom: 30px;
 }
 
-.start-test-btn {
+.action-buttons-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.action-test-btn {
   display: flex;
   align-items: center;
+  justify-content: center; /* 垂直居中 */
   gap: 10px;
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
@@ -1297,14 +1481,54 @@ export default {
   }
 }
 
+.refresh-pre-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  
+  &:hover:not(.disabled) {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+  }
+  
+  &.testing {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  }
+}
+
+.refresh-firmware-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  
+  &:hover:not(.disabled) {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+  }
+}
+
+.refresh-post-btn {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: white;
+  
+  &:hover:not(.disabled) {
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+    box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3);
+  }
+}
+
 .test-icon {
-  font-size: 18px;
+  font-size: 15px;
+}
+
+.test-text {
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .test-subtext {
   font-size: 14px;
+  // 不透明度设置，0完全透明
+  opacity: 0.9; 
   font-weight: 500;
-  opacity: 0.9;
 }
 
 /* 截图区域样式 */
@@ -1333,7 +1557,7 @@ export default {
   padding: 16px 20px;
   background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%);
   border-bottom: 1px solid #e2e8f0;
-  min-height: 64px;
+  min-height: 24px;
 }
 
 .panel-title-area {
@@ -1650,7 +1874,7 @@ export default {
   .screenshot-item:hover & {
     opacity: 1;
   }
-  
+
   .overlay-left,
   .overlay-right {
     display: flex;
@@ -2024,7 +2248,7 @@ export default {
       margin-bottom: 10px;
     }
   }
-  
+
   .preview-content {
     width: 95%;
     max-height: 85vh;
@@ -2137,15 +2361,15 @@ export default {
       font-size: 12px;
     }
   }
-  
+
   .preview-content {
     width: 98%;
     max-height: 80vh;
   }
-  
+
   .preview-actions {
     flex-direction: column;
-    
+
     .action-btn {
       width: 100%;
     }
@@ -2188,14 +2412,87 @@ export default {
     flex: 1;
     min-width: auto;
   }
-  
+
   .preview-navigation {
     gap: 10px;
-    
+
     .nav-btn {
       width: 36px;
       height: 36px;
     }
   }
+
+  .logs-panel {
+    height: 250px;
+  }
+
+  .log-item {
+    font-size: 12px;
+    gap: 6px;
+    padding: 2px 0;
+  }
+
+  .log-time {
+    font-size: 12px;
+    min-width: 75px;
+  }
+}
+
+/* 测试日志区域样式 */
+.test-logs-section {
+  margin-bottom: 24px;
+}
+
+.logs-panel {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  height: 300px;
+}
+
+.logs-container {
+  flex: 1;
+  background: #f8fafc;
+  overflow: hidden;
+  position: relative; /* 确保滚动区域定位正确 */
+}
+
+.logs-content {
+  height: 100%;
+  overflow-y: auto;
+  padding: 10px 15px 15px 15px; /* 调整内边距，底部增加一些空间 */
+  box-sizing: border-box; /* 确保内边距包含在高度内（不会被截断！！！） */
+}
+
+.log-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px; /* 减小间隙 */
+  padding: 3px 0; /* 减小上下内边距 */
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+  line-height: 1.3; /* 减小行高 */
+  margin-bottom: 1px; /* 添加微小底部间距 */
+}
+
+.log-time {
+  color: #64748b;
+  font-family: monospace;
+  font-size: 14px; /* 稍微减小字体 */
+  min-width: 100px; /* 调整为带年月日的宽度 */
+  padding-top: 1px; /* 减小顶部内边距 */
+  flex-shrink: 0; /* 防止时间被压缩 */
+  margin-right: 15px;
+}
+
+.log-message {
+  color: #334155;
+  flex: 1;
+  word-break: break-word;
+  padding: 1px 0; /* 添加微小内边距 */
 }
 </style>

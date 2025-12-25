@@ -1,7 +1,7 @@
 <template>
   <header class="header">
     <!-- 左侧标题 -->
-    <h1 class="main-page-title">web自动化操作平台</h1>
+    <h1 class="main-page-title">web自动化操作平台（仅针对通用项目）</h1>
 
     <!-- 右侧用户信息或登录按钮 -->
     <div class="header-right">
