@@ -250,6 +250,7 @@ from pages.test_ldap import *
 from pages.test_ad import *
 from pages.test_bios import *
 from pages.test_time import *
+from pages.test_log import *
 from pages.login import *
 import base64
 @app.route('/api/test_cases/start_test', methods=['POST'])
@@ -266,7 +267,8 @@ def start_test():
         "LDAP/E-directory": (test_ldap, "ldap_config_auto"),
         "Active Directory": (test_ad, "ad_config_auto"),
         "BIOS设置": (test_bios, "bios_config_auto"),
-        "日期&时间": (test_time, "time_config_auto")
+        "日期&时间": (test_time, "time_config_auto"),
+        "日志设置": (test_log, "log_config_auto")
     }
 
     # 从请求体中获取数据

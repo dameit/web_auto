@@ -2,19 +2,19 @@ from pages.base import base_page
 from pages.login import login_page
 from common.config_read import ConfigRead
 
-class test_time(login_page):
-    def __init__(self, ip, username, password, driver=None):
-        super().__init__(ip, username, password, driver)
-        self.meau_expand = self.config.get("time_config", "meau_expand").split(', ')
-        self.path = [path.strip() for path in self.config.get("time_config", "path").splitlines() ]
-        self.time_config = [config.strip() for config in self.config.get("time_config", "config").splitlines()]
+class test_log(base_page):
+    def __init__(self, driver):
+        super().__init__(driver)
+        self.meau_expand = self.config.get("log_config", "meau_expand").split(', ')
+        self.path = [path.strip() for path in self.config.get("log_config", "path").splitlines() ]
+        self.log_config = [config.strip() for config in self.config.get("log_config", "config").splitlines()]
 
-    def time_config_auto(self):
-        # 判断 BMC设置 菜单是否展开
+    def log_config_auto(self):
+        # 判断 日志 菜单是否展开
         self.wait_for_angular_ready()
         meau_element = self.find_element(*self.meau_expand)
         _path = self.path[1:] if "menu-show" in meau_element.get_attribute("class") else self.path
-        # 依次点击进入 日期&时间 界面
+        # 依次点击进入 日志设置 界面
         for path in _path:
             path_by_locator = path.split(', ')
             element = self.find_element(*path_by_locator)
@@ -23,7 +23,7 @@ class test_time(login_page):
         import time 
         screenshot_all, index = [], 1
         # 自动操作
-        for config in self.time_config:
+        for config in self.log_config:
             config_type_by_locator = config.split(', ')
             config_type, config_by_locator = config_type_by_locator[0], \
                 config_type_by_locator[1:3]
@@ -51,22 +51,9 @@ class test_time(login_page):
                 permission_select.select_by_visible_text(config_type_by_locator[-1])
             elif config_type == "click_save":
                 self.click_element(element=element)
-                ## 时间&日期界面点击完会弹出确认弹窗，需要点击确认
-                self.handle_alert()
-                self.webdriver.save_screenshot(rf"backend\screenshot_save\time_config_{index}.png")   
+                self.webdriver.save_screenshot(rf"backend\screenshot_save\log_config_{index}.png")   
                 index += 1
                 screenshot_all.append(self.webdriver.get_screenshot_as_base64())   
-        
-        from selenium.webdriver.support.ui import WebDriverWait
-        from selenium.webdriver.support import expected_conditions as EC
-        wait = WebDriverWait(self.webdriver, 10)
-        username_by_locator = self.config.get("login_page", "username").split(', ')
-        wait.until(EC.presence_of_element_located((username_by_locator[0], username_by_locator[1])))
-        ## 确认后会自动退出，需要重新登陆
-        self.input_username()
-        self.input_password()
-        self.login_click()
-        self.handle_alert()
       
         # 返回webdriver对象，获取截图作为Base64字符串
         return self.webdriver, screenshot_all
