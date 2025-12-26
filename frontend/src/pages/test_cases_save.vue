@@ -148,21 +148,37 @@
         <button
           @click="afterRefreshTest"
           class="action-test-btn refresh-post-btn"
-          :class="{ disabled: !hasSelectedSettings || isAfterTesting }"
+          :class="{
+            disabled: !hasSelectedSettings || currentAfterTestingSetting,
+            testing: currentAfterTestingSetting,
+          }"
         >
-          <span class="test-icon">{{ isAfterTesting ? "⏳" : "▶" }}</span>
+          <span class="test-icon">{{
+            currentAfterTestingSetting ? "⏳" : "▶"
+          }}</span>
           <span class="test-text">
-            {{ isAfterTesting ? "刷新后测试中..." : "刷新后测试" }}
+            {{
+              currentAfterTestingSetting
+                ? `正在测试：${currentAfterTestingSetting}`
+                : "刷新后测试"
+            }}
           </span>
           <span class="test-subtext">
-            {{ `(${selectedCount}个配置项)` }}
+            {{
+              currentAfterTestingSetting
+                ? `(第${afterTestingProgress}个/共${afterTotalTesting}个配置项)`
+                : `(${selectedCount}个配置项)`
+            }}
           </span>
         </button>
       </div>
     </div>
 
     <!-- 日志显示区域 -->
-    <div class="test-logs-section" v-if="testLogs.length > 0 || isTesting">
+    <div
+      class="test-logs-section"
+      v-if="testLogs.length > 0 || isTesting || isAfterTesting"
+    >
       <div class="logs-panel">
         <div class="panel-header">
           <div class="panel-title-area">
@@ -214,7 +230,6 @@
           </div>
 
           <div class="panel-actions">
-            <!-- 修改：优化按钮布局 -->
             <div
               class="batch-controls-wrapper"
               v-if="beforeScreenshots.length > 0"
@@ -255,7 +270,6 @@
         </div>
 
         <div class="screenshot-container">
-          <!-- 修改：移除所有提示信息 -->
           <div
             v-if="beforeScreenshots.length === 0"
             class="empty-screenshot-placeholder"
@@ -322,22 +336,49 @@
             </h3>
             <div class="screenshot-count" v-if="afterScreenshots.length > 0">
               {{ afterScreenshots.length }}张截图
+              <span v-if="selectedAfterCount > 0" class="selected-count">
+                (已选中{{ selectedAfterCount }}张)
+              </span>
             </div>
           </div>
 
           <div class="panel-actions">
-            <button @click="addAfterScreenshot" class="action-btn add-btn">
-              <span class="action-icon">+</span>
-              添加截图
-            </button>
-            <button
-              @click="clearAfterScreenshots"
-              class="action-btn clear-btn"
-              :disabled="afterScreenshots.length === 0"
+            <div
+              class="batch-controls-wrapper"
+              v-if="afterScreenshots.length > 0"
             >
-              <span class="action-icon">🗑️</span>
-              清空
-            </button>
+              <div class="batch-controls">
+                <button
+                  @click="selectAllAfter"
+                  class="action-btn select-all-btn"
+                >
+                  <span class="action-icon">✓</span>
+                  <span class="action-text">全选</span>
+                </button>
+                <button
+                  @click="deselectAllAfter"
+                  class="action-btn deselect-all-btn"
+                >
+                  <span class="action-icon">✗</span>
+                  <span class="action-text">取消</span>
+                </button>
+                <button
+                  @click="downloadSelectedAfter"
+                  class="action-btn download-btn"
+                  :disabled="selectedAfterCount === 0"
+                >
+                  <span class="action-icon">⬇</span>
+                  <span class="action-text">下载</span>
+                </button>
+              </div>
+              <button
+                @click="clearAfterScreenshots"
+                class="action-btn clear-btn"
+              >
+                <span class="action-icon">🗑️</span>
+                <span class="action-text">清空</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -345,11 +386,8 @@
           <div
             v-if="afterScreenshots.length === 0"
             class="empty-screenshot-placeholder"
-            @click="addAfterScreenshot"
           >
             <div class="placeholder-icon">📷</div>
-            <div class="placeholder-text">点击添加测试后截图</div>
-            <div class="placeholder-hint">支持所有图片格式，无数量限制</div>
           </div>
 
           <div v-else class="screenshot-scroll-container">
@@ -358,36 +396,42 @@
                 v-for="(screenshot, index) in afterScreenshots"
                 :key="'after-' + index"
                 class="screenshot-item"
+                :class="{ selected: screenshot.selected }"
+                @click="toggleAfterScreenshotSelection(index)"
               >
                 <div class="screenshot-wrapper">
+                  <!-- 添加选中标记 -->
+                  <div class="selection-indicator" v-if="screenshot.selected">
+                    <span class="checkmark">✓</span>
+                  </div>
                   <img
                     :src="screenshot.url"
                     :alt="screenshot.name"
                     class="screenshot-image"
                     @load="onImageLoad"
+                    @click.stop="previewImage('after', index)"
                   />
                   <div class="screenshot-overlay">
-                    <button
-                      @click.stop="removeAfterScreenshot(index)"
-                      class="remove-btn"
-                      title="删除截图"
-                    >
-                      <span class="remove-icon">×</span>
-                    </button>
-                    <span class="screenshot-name">{{ screenshot.name }}</span>
+                    <div class="overlay-left">
+                      <button
+                        @click.stop="previewImage('after', index)"
+                        class="preview-btn"
+                        title="放大查看"
+                      >
+                        <span class="preview-icon">🔍</span>
+                      </button>
+                    </div>
+                    <div class="overlay-right">
+                      <button
+                        @click.stop="removeAfterScreenshot(index)"
+                        class="remove-btn"
+                        title="删除截图"
+                      >
+                        <span class="remove-icon">×</span>
+                      </button>
+                    </div>
                   </div>
                   <div class="screenshot-index">{{ index + 1 }}</div>
-                </div>
-              </div>
-
-              <!-- 添加更多截图按钮 -->
-              <div
-                class="screenshot-item add-more-item"
-                @click="addAfterScreenshot"
-              >
-                <div class="add-more-content">
-                  <span class="add-icon">+</span>
-                  <span class="add-text">添加更多截图</span>
                 </div>
               </div>
             </div>
@@ -457,16 +501,6 @@
         </div>
       </div>
     </div>
-
-    <!-- 隐藏的文件输入元素，用于截图上传 -->
-    <input
-      type="file"
-      ref="screenshotInput"
-      @change="handleScreenshotUpload"
-      multiple
-      class="hidden-file-input"
-      id="screenshotInput"
-    />
   </div>
 </template>
 
@@ -487,12 +521,18 @@ export default {
       bmcIp: bmc_ip || "请返回首页添加BMC IP",
       osIp: os_ip || "请返回首页添加OS IP",
       selectedFile: null,
+      // 刷新前测试相关状态
       currentTestingSetting: "", // 当前正在测试的配置项名称
       testingProgress: 0, // 当前测试进度（第几个）
       totalTesting: 0, // 总共要测试的数量
+      // 刷新后测试相关状态
+      currentAfterTestingSetting: "", // 刷新后当前正在测试的配置项名称
+      afterTestingProgress: 0, // 刷新后当前测试进度（第几个）
+      afterTotalTesting: 0, // 刷新后总共要测试的数量
       // 测试日志相关数据
       testLogs: [],
       isTesting: false,
+      isAfterTesting: false,
       settings: [
         { id: "syslog", name: "Syslog设置", icon: "📋", selected: false },
         { id: "trap", name: "Trap设置", icon: "🚨", selected: false },
@@ -509,7 +549,6 @@ export default {
       ],
       beforeScreenshots: [],
       afterScreenshots: [],
-      screenshotTarget: "after", // 只用于测试后截图
       // 图片预览相关数据
       previewVisible: false,
       previewType: "", // 'before' 或 'after'
@@ -527,9 +566,14 @@ export default {
     hasSelectedSettings() {
       return this.selectedCount > 0;
     },
-    // 添加这个计算属性
+    // 测试前截图选中数量
     selectedBeforeCount() {
       return this.beforeScreenshots.filter((screenshot) => screenshot.selected)
+        .length;
+    },
+    // 测试后截图选中数量
+    selectedAfterCount() {
+      return this.afterScreenshots.filter((screenshot) => screenshot.selected)
         .length;
     },
     // 获取当前预览类型的截图数组
@@ -566,6 +610,7 @@ export default {
     clearTestLogs() {
       this.testLogs = [];
       this.isTesting = false;
+      this.isAfterTesting = false;
     },
     // 格式化时间
     formatTime(date) {
@@ -637,21 +682,16 @@ export default {
       this.$refs.fileInput.click();
     },
 
-    // event就是原生点击事件对象
     async handleFileSelect(event) {
-      // event.target.files：文件选择框的选中文件列表
-      // files 是 <input type="file"> 元素的内置属性，仅该类型的输入框有这个属性：
       const files = event.target.files;
       if (files.length > 0) {
         this.selectedFile = files[0];
         console.log("已选择文件:", this.selectedFile);
       }
 
-      // 创建FormData对象（文件上传必须用FormData）
+      // 创建FormData对象
       const formData = new FormData();
-      // 核心：将选中的文件对象添加到FormData，key为"file"（后端需对应这个key）
       formData.append("file", this.selectedFile);
-      // 添加用户名
       const userInfo = localStorage.getItem("user_info");
       const user = JSON.parse(userInfo);
       const username = user.username;
@@ -716,7 +756,46 @@ export default {
       });
     },
 
-    // 新增：切换测试前截图的选中状态
+    // 刷新固件功能（示例）
+    async refreshFirmware() {
+      if (!this.selectedFile) {
+        ElNotification({
+          title: "提示",
+          message: "请先选择固件文件",
+          type: "warning",
+        });
+        return;
+      }
+
+      this.isRefreshingFirmware = true;
+
+      try {
+        // 这里调用刷新固件的API
+        // 示例代码，需要根据实际API调整
+        this.addLog("├── 开始刷新BMC固件...");
+
+        // 模拟刷新过程
+        await delay(2000);
+
+        this.addLog("└── BMC固件刷新完成");
+        ElNotification({
+          title: "成功",
+          message: "BMC固件刷新完成",
+          type: "success",
+        });
+      } catch (error) {
+        this.addLog(`└── BMC固件刷新失败: ${error.message}`);
+        ElNotification({
+          title: "错误",
+          message: "固件刷新失败",
+          type: "error",
+        });
+      } finally {
+        this.isRefreshingFirmware = false;
+      }
+    },
+
+    // 切换测试前截图的选中状态
     toggleBeforeScreenshotSelection(index) {
       if (this.beforeScreenshots[index]) {
         this.beforeScreenshots[index].selected =
@@ -724,23 +803,79 @@ export default {
       }
     },
 
-    // 新增：全选测试前截图
+    // 全选测试前截图
     selectAllBefore() {
       this.beforeScreenshots.forEach((screenshot) => {
         screenshot.selected = true;
       });
     },
 
-    // 新增：取消全选测试前截图
+    // 取消全选测试前截图
     deselectAllBefore() {
       this.beforeScreenshots.forEach((screenshot) => {
         screenshot.selected = false;
       });
     },
 
-    // 修改：下载选中的测试前截图
+    // 下载选中的测试前截图
     async downloadSelectedBefore() {
       const selectedScreenshots = this.beforeScreenshots.filter(
+        (s) => s.selected
+      );
+
+      if (selectedScreenshots.length === 0) {
+        ElNotification({
+          title: "提示",
+          message: "请先选择要下载的截图",
+          type: "warning",
+        });
+        return;
+      }
+
+      console.log(selectedScreenshots);
+      // 批量下载
+      for (let i = 0; i < selectedScreenshots.length; i++) {
+        const screenshot = selectedScreenshots[i];
+
+        try {
+          // 下载当前图片
+          await this.downloadSingleImage(screenshot);
+
+          // 延迟一段时间，避免浏览器同时处理太多下载请求
+          if (i < selectedScreenshots.length - 1) {
+            await delay(500); // 500毫秒延迟
+          }
+        } catch (error) {
+          console.error(`下载第 ${i + 1} 张图片失败:`, error);
+        }
+      }
+    },
+
+    // 切换测试后截图的选中状态
+    toggleAfterScreenshotSelection(index) {
+      if (this.afterScreenshots[index]) {
+        this.afterScreenshots[index].selected =
+          !this.afterScreenshots[index].selected;
+      }
+    },
+
+    // 全选测试后截图
+    selectAllAfter() {
+      this.afterScreenshots.forEach((screenshot) => {
+        screenshot.selected = true;
+      });
+    },
+
+    // 取消全选测试后截图
+    deselectAllAfter() {
+      this.afterScreenshots.forEach((screenshot) => {
+        screenshot.selected = false;
+      });
+    },
+
+    // 下载选中的测试后截图
+    async downloadSelectedAfter() {
+      const selectedScreenshots = this.afterScreenshots.filter(
         (s) => s.selected
       );
 
@@ -849,12 +984,13 @@ export default {
         .filter((setting) => setting.selected)
         .map((setting) => setting.name);
 
-      console.log("开始测试以下配置项:", selectedSettings);
+      console.log("开始刷新前测试以下配置项:", selectedSettings);
       const userInfo = localStorage.getItem("user_info");
       const user = JSON.parse(userInfo);
       const bmc_ip = user.bmc_ip;
       const bmc_username = user.bmc_username;
       const bmc_password = user.bmc_password;
+      const is_before = true;
       // 先清空之前的截图
       this.clearBeforeScreenshots();
 
@@ -865,10 +1001,10 @@ export default {
       this.currentTestingSetting = "";
       // 添加开始测试日志
       this.addLog(
-        `├── 开始测试，共选择 ${selectedSettings.length} 个配置项：${selectedSettings}`
+        `├── 开始刷新前测试，共选择 ${selectedSettings.length} 个配置项：${selectedSettings}`
       );
 
-      // ********** 一个一个测 **********
+      // 一个一个测
       for (let i = 0; i < selectedSettings.length; i++) {
         const settingName = selectedSettings[i];
         console.log(
@@ -884,26 +1020,28 @@ export default {
             bmc_ip,
             bmc_username,
             bmc_password,
-            [settingName]
+            [settingName],
+            is_before
           );
           if (test_result.success) {
             // 记录成功日志
-            this.addLog(`└── ${settingName}：选项配置成功`);
+            this.addLog(`└── ${settingName}：配置测试成功`);
             // 处理返回的截图数据
             if (
               test_result.screenshots &&
               test_result.screenshots_name &&
               test_result.screenshots.length > 0
             ) {
-              this.processBeforeScreenshots(
+              this.processScreenshots(
                 test_result.screenshots,
-                test_result.screenshots_name
+                test_result.screenshots_name,
+                "before"
               );
             }
           } else {
             // 记录失败日志
             this.addLog(
-              `└── ${settingName}：选项配置失败 - ${
+              `└── ${settingName}：配置测试失败 - ${
                 test_result.message || "未知错误"
               }`
             );
@@ -917,32 +1055,103 @@ export default {
       this.currentTestingSetting = "";
       this.testingProgress = 0;
       this.totalTesting = 0;
-
-      // ********** 一起测 **********
-      // const test_result = await start_test(
-      //   bmc_ip,
-      //   bmc_username,
-      //   bmc_password,
-      //   selectedSettings
-      // );
-      // if (test_result.success) {
-      //   console.log(`web自动化操作通过`, test_result);
-      //   // 处理返回的截图数据
-      //   if (test_result.screenshots && test_result.screenshots_name && test_result.screenshots.length > 0) {
-      //     this.processBeforeScreenshots(test_result.screenshots, test_result.screenshots_name);
-      //   }
-      // } else {
-      //   console.log(`web自动化操作失败: ${test_result.message || "未知错误"}`);
-      // }
+      this.isTesting = false;
     },
 
-    // 处理测试前截图数据
-    processBeforeScreenshots(screenshotData, screenshotName) {
-      // 根据返回的数据结构处理截图
-      // 假设返回的是base64编码的图片数组
+    async afterRefreshTest() {
+      if (!this.hasSelectedSettings) {
+        ElNotification({
+          title: "提示",
+          message: "请至少选择一个配置项进行测试",
+          type: "warning",
+        });
+        return;
+      }
+
+      const selectedSettings = this.settings
+        .filter((setting) => setting.selected)
+        .map((setting) => setting.name);
+
+      console.log("开始刷新后测试以下配置项:", selectedSettings);
+      const userInfo = localStorage.getItem("user_info");
+      const user = JSON.parse(userInfo);
+      const bmc_ip = user.bmc_ip;
+      const bmc_username = user.bmc_username;
+      const bmc_password = user.bmc_password;
+      const is_before = false;
+      // 先清空之前的截图
+      this.clearAfterScreenshots();
+
+      // 设置测试状态
+      this.isAfterTesting = true;
+      this.afterTotalTesting = selectedSettings.length;
+      this.afterTestingProgress = 0;
+      this.currentAfterTestingSetting = "";
+      // 添加开始测试日志
+      this.addLog(
+        `├── 开始刷新后测试，共选择 ${selectedSettings.length} 个配置项：${selectedSettings}`
+      );
+
+      // 一个一个测
+      for (let i = 0; i < selectedSettings.length; i++) {
+        const settingName = selectedSettings[i];
+        console.log(
+          `正在测试第 ${i + 1}/${
+            selectedSettings.length
+          } 个配置项: ${settingName}`
+        );
+        // 更新当前测试状态
+        this.afterTestingProgress = i + 1;
+        this.currentAfterTestingSetting = settingName;
+        try {
+          const test_result = await start_test(
+            bmc_ip,
+            bmc_username,
+            bmc_password,
+            [settingName],
+            is_before
+          );
+          if (test_result.success) {
+            // 记录成功日志
+            this.addLog(`└── ${settingName}：刷新后配置测试成功`);
+            // 处理返回的截图数据
+            if (
+              test_result.screenshots &&
+              test_result.screenshots_name &&
+              test_result.screenshots.length > 0
+            ) {
+              this.processScreenshots(
+                test_result.screenshots,
+                test_result.screenshots_name,
+                "after"
+              );
+            }
+          } else {
+            // 记录失败日志
+            this.addLog(
+              `└── ${settingName}：刷新后配置测试失败 - ${
+                test_result.message || "未知错误"
+              }`
+            );
+          }
+        } catch (error) {
+          // 记录异常日志
+          this.addLog(`└── ${settingName}: 发生错误 - ${error.message}`);
+        }
+      }
+      // 测试完成后清除状态
+      this.currentAfterTestingSetting = "";
+      this.afterTestingProgress = 0;
+      this.afterTotalTesting = 0;
+      this.isAfterTesting = false;
+    },
+
+    // 通用处理截图数据
+    processScreenshots(screenshotData, screenshotName, type) {
+      const targetArray =
+        type === "before" ? this.beforeScreenshots : this.afterScreenshots;
+
       screenshotData.forEach((screenshot, index) => {
-        // 根据实际返回的数据结构调整
-        // 这里假设返回的是base64字符串或URL
         let imageUrl;
         let imageName = screenshotName[index];
 
@@ -960,62 +1169,19 @@ export default {
         }
 
         if (imageUrl) {
-          this.beforeScreenshots.push({
+          targetArray.push({
             name: imageName,
             url: imageUrl,
             type: "image/png",
             size: 0,
+            selected: false, // 添加选中状态
           });
         }
       });
     },
 
-    addAfterScreenshot() {
-      this.screenshotTarget = "after";
-      this.$refs.screenshotInput.click();
-    },
-
-    handleScreenshotUpload(event) {
-      const files = event.target.files;
-      if (files.length === 0) return;
-
-      const timestamp = new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      });
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-
-        // 创建URL以预览图片
-        const imageUrl = URL.createObjectURL(file);
-
-        const screenshot = {
-          name: `测试后截图_${timestamp}_${i + 1}`,
-          url: imageUrl,
-          file: file,
-          type: file.type,
-          size: file.size,
-        };
-
-        // 只添加到测试后截图
-        this.afterScreenshots.push(screenshot);
-      }
-
-      // 重置文件输入
-      event.target.value = "";
-
-      // 显示添加成功提示
-      ElNotification({
-        title: "截图添加成功",
-        message: `成功添加 ${files.length} 张测试后截图`,
-        type: "success",
-      });
-    },
-
     onImageLoad(event) {
-      // 图片加载完成后的处理，可以在这里添加懒加载或其他处理
+      // 图片加载完成后的处理
       event.target.classList.add("loaded");
     },
 
@@ -1484,12 +1650,12 @@ export default {
 .refresh-pre-btn {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
-  
+
   &:hover:not(.disabled) {
     background: linear-gradient(135deg, #059669 0%, #047857 100%);
     box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
   }
-  
+
   &.testing {
     background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   }
@@ -1498,7 +1664,7 @@ export default {
 .refresh-firmware-btn {
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
-  
+
   &:hover:not(.disabled) {
     background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
     box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
@@ -1508,10 +1674,14 @@ export default {
 .refresh-post-btn {
   background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
   color: white;
-  
+
   &:hover:not(.disabled) {
     background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
     box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3);
+  }
+
+  &.testing {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   }
 }
 
@@ -1526,8 +1696,7 @@ export default {
 
 .test-subtext {
   font-size: 14px;
-  // 不透明度设置，0完全透明
-  opacity: 0.9; 
+  opacity: 0.9;
   font-weight: 500;
 }
 
@@ -1954,43 +2123,6 @@ export default {
   font-size: 11px;
   font-weight: 600;
   z-index: 5;
-}
-
-.add-more-item {
-  border: 2px dashed #cbd5e1;
-  background: #f8fafc;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-
-  &:hover {
-    border-color: #93c5fd;
-    background: #f0f9ff;
-
-    .add-more-content {
-      color: #3b82f6;
-    }
-  }
-}
-
-.add-more-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  color: #94a3b8;
-  transition: all 0.2s ease;
-}
-
-.add-icon {
-  font-size: 24px;
-  font-weight: 300;
-}
-
-.add-text {
-  font-size: 13px;
-  font-weight: 500;
 }
 
 /* 图片预览模态框样式 */

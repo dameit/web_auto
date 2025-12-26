@@ -107,13 +107,14 @@ export const file_save = async (formData) => {
 }
 
 // 自动配置bmc web API
-export const start_test = async (ip, username, password, test_cases) => {
+export const start_test = async (ip, username, password, test_cases, is_before) => {
   try {
     const response = await apiClient.post('/test_cases/start_test', {
       'ip': ip,
       'username': username,
       'password': password,
-      'test_cases': test_cases
+      'test_cases': test_cases,
+      'is_before': is_before
     },
     {
       timeout : 120000,

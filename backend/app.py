@@ -278,6 +278,7 @@ def start_test():
     username = data.get('username', '').strip()
     password = data.get('password', '').strip()
     test_cases = data.get('test_cases')
+    is_before = data.get('is_before')
 
     # 创建截图保存的文件夹
     screenshot_save_path = config.screenshot_save_path()
@@ -297,8 +298,8 @@ def start_test():
         for case in test_cases:
             config_class, method_name = config_dict[case]
             # 实例化页面自动操作类
-            config_instance = config_class(driver=shared_driver) if case != "日期&时间" \
-                else config_class(ip, username, password, driver=shared_driver)
+            config_instance = config_class(driver=shared_driver, is_before=is_before) if case != "日期&时间" \
+                else config_class(ip, username, password, driver=shared_driver, is_before=is_before)
             # 动态获取方法并调用（getattr是核心）
             target_method = getattr(config_instance, method_name)
             shared_driver, screenshot_base64 = target_method()
