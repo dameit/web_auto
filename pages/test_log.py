@@ -55,6 +55,7 @@ class test_log(base_page):
                     permission_select.select_by_visible_text(config_type_by_locator[-1])
                 elif config_type == "click_save":
                     self.click_element(element=element)
+                    # self.webdriver.save_screenshot(rf"backend\screenshot_save\log_config_{index}.png")  
                     screenshot_all.append(self.webdriver.get_screenshot_as_base64())   
         
             # 返回webdriver对象，获取截图作为Base64字符串
