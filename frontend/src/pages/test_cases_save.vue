@@ -105,6 +105,7 @@
         <button
           @click="startTest"
           class="action-test-btn refresh-pre-btn"
+          :disabled="!beforeTestingClick"
           :class="{
             disabled: !hasSelectedSettings || currentTestingSetting,
             testing: currentTestingSetting,
@@ -133,6 +134,7 @@
         <button
           @click="refreshFirmware"
           class="action-test-btn refresh-firmware-btn"
+          :disabled="!fwRefreshClick"
           :class="{ disabled: !selectedFile || isRefreshingFirmware }"
         >
           <span class="test-icon">{{ isRefreshingFirmware ? "⏳" : "▶" }}</span>
@@ -148,6 +150,7 @@
         <button
           @click="afterRefreshTest"
           class="action-test-btn refresh-post-btn"
+          :disabled="!afterTestingClick"
           :class="{
             disabled: !hasSelectedSettings || currentAfterTestingSetting,
             testing: currentAfterTestingSetting,
@@ -521,6 +524,10 @@ export default {
       bmcIp: bmc_ip || "请返回首页添加BMC IP",
       osIp: os_ip || "请返回首页添加OS IP",
       selectedFile: null,
+      // 按钮点击后禁止再次点击
+      beforeTestingClick: true,
+      fwRefreshClick: true,
+      afterTestingClick: true,
       // 刷新前测试相关状态
       currentTestingSetting: "", // 当前正在测试的配置项名称
       testingProgress: 0, // 当前测试进度（第几个）
@@ -991,6 +998,7 @@ export default {
       const bmc_username = user.bmc_username;
       const bmc_password = user.bmc_password;
       const is_before = true;
+      this.beforeTestingClick = false;
       // 先清空之前的截图
       this.clearBeforeScreenshots();
 
@@ -1056,6 +1064,8 @@ export default {
       this.testingProgress = 0;
       this.totalTesting = 0;
       this.isTesting = false;
+      // 在此设置按钮可以点击
+      this.beforeTestingClick = true;
     },
 
     async afterRefreshTest() {
@@ -1079,6 +1089,7 @@ export default {
       const bmc_username = user.bmc_username;
       const bmc_password = user.bmc_password;
       const is_before = false;
+      this.afterTestingClick = false;
       // 先清空之前的截图
       this.clearAfterScreenshots();
 
@@ -1144,6 +1155,8 @@ export default {
       this.afterTestingProgress = 0;
       this.afterTotalTesting = 0;
       this.isAfterTesting = false;
+      // 在此设置刷新后测试按钮可以点击
+      this.afterTestingClick = true;
     },
 
     // 通用处理截图数据
