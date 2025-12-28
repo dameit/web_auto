@@ -10,21 +10,23 @@ class MysqlConnect():
         try:
             config_read = ConfigRead()
             self.db_config = config_read.database_load()
+            # 第一步：先连接到MySQL服务器但不指定数据库
             connection = mysql.connector.connect(
                 host = self.db_config["host"],
                 port = self.db_config["port"],
                 user = self.db_config["username"],
-                password = self.db_config["password"],
-                database = self.db_config["database"]
+                password = self.db_config["password"]
             )
-
+            
             if connection.is_connected():
-                print(f"成功连接到数据库 {self.db_config['database']}")
-                
-                # 创建游标
                 cursor = connection.cursor()
                 
-                # 直接尝试创建表（如果不存在）
+                # 检查数据库是否存在，不存在则创建
+                cursor.execute(f"CREATE DATABASE IF NOT EXISTS {self.db_config['database']}")
+                cursor.execute(f"USE {self.db_config['database']}")
+                print(f"成功连接到数据库 {self.db_config['database']}")
+                
+                # 创建users表（如果不存在）
                 create_table_sql = """
                     CREATE TABLE IF NOT EXISTS users (
                         id INT AUTO_INCREMENT PRIMARY KEY,
