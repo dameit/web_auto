@@ -20,6 +20,29 @@ class MysqlConnect():
 
             if connection.is_connected():
                 print(f"成功连接到数据库 {self.db_config['database']}")
+                
+                # 创建游标
+                cursor = connection.cursor()
+                
+                # 直接尝试创建表（如果不存在）
+                create_table_sql = """
+                    CREATE TABLE IF NOT EXISTS users (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        username VARCHAR(10) NOT NULL,
+                        password VARCHAR(255) NOT NULL,
+                        bmc_ip VARCHAR(20),
+                        bmc_username VARCHAR(20),
+                        bmc_password VARCHAR(255),
+                        os_ip VARCHAR(20),
+                        os_username VARCHAR(20),
+                        os_password VARCHAR(255),
+                        file_save_path VARCHAR(100)
+                    )
+                """
+                cursor.execute(create_table_sql)
+                connection.commit()
+                cursor.close()
+                
                 return connection
 
         except Error as e:
