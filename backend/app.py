@@ -317,3 +317,54 @@ def start_test():
         test_case.driver_quit()
         print(e)
         return jsonify({'success': False, 'message': '自动配置过程中出错'}), 400
+
+from backend.redfish_update_fw import redfish_update_fw
+@app.route('/api/test_cases/fw_update', methods=['POST'])
+def fw_update():
+    data = request.get_json()
+
+    ## 从前端获取bmc_ip, bmc_username, bm_password
+    bmc_ip = data.get('bmc_ip', '').strip()
+    bmc_username = data.get('bmc_username', '').strip()
+    bmc_password = data.get('bmc_password', '').strip()
+
+    ## 从前端获取bmc用户名对应的FW文件存储路径
+    username = data.get('username', '')
+    conn = db_connect()
+    cursor = conn.cursor()
+    # 执行查询
+    cursor.execute("""
+        SELECT file_save_path
+        FROM users
+        WHERE username = %s
+    """, (username,))  # 注意这里需要逗号，确保是元组
+    # 获取查询结果
+    result = cursor.fetchone()  # 获取单条记录
+    if result:
+        file_save_path = result[0]  # 获取第一列的值
+        print(f"找到用户 {username} 的文件路径: {file_save_path}")
+    else:
+        file_save_path = None
+        print(f"未找到用户 {username} 的记录")
+
+    ## 从config文件中获取
+    all_config = config.config_load()
+    session_api = all_config.get("redfish_path", "session_post_api")
+    localFile_upload_api = all_config.get("redfish_path", "local_file_upload_api")
+    update_api = all_config.get("redfish_path", "bmc_file_update_api")
+    update_target = all_config.get("redfish_path", "bmc_file_update_target")
+    ImageURI = file_save_path.split('\\')
+    ImageURI = f"/tmp/{ImageURI[-1]}"
+    task_api = all_config.get("redfish_path", "task_api")
+    try:
+        redfish_update_fw(bmc_ip, bmc_username, bmc_password, session_api, \
+                        localFile_upload_api, file_save_path, \
+                        update_api, update_target, ImageURI, \
+                        task_api)
+        return jsonify({
+            'success': True, 
+            'message': '更新BMC固件成功',
+        }), 200
+    except Exception as e:
+        print(e)
+        return jsonify({'success': False, 'message': '更新BMC固件失败'}), 400

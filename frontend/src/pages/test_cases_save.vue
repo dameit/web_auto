@@ -105,9 +105,9 @@
         <button
           @click="startTest"
           class="action-test-btn refresh-pre-btn"
-          :disabled="!beforeTestingClick"
+          :disabled="!beforeTestingClick || isRefreshingFirmware"
           :class="{
-            disabled: !hasSelectedSettings || currentTestingSetting,
+            disabled: !hasSelectedSettings || currentTestingSetting || isRefreshingFirmware,
             testing: currentTestingSetting,
           }"
         >
@@ -134,7 +134,7 @@
         <button
           @click="refreshFirmware"
           class="action-test-btn refresh-firmware-btn"
-          :disabled="!fwRefreshClick"
+          :disabled="!fwRefreshClick || isRefreshingFirmware"
           :class="{ disabled: !selectedFile || isRefreshingFirmware }"
         >
           <span class="test-icon">{{ isRefreshingFirmware ? "⏳" : "▶" }}</span>
@@ -150,9 +150,9 @@
         <button
           @click="afterRefreshTest"
           class="action-test-btn refresh-post-btn"
-          :disabled="!afterTestingClick"
+          :disabled="!afterTestingClick || isRefreshingFirmware"
           :class="{
-            disabled: !hasSelectedSettings || currentAfterTestingSetting,
+            disabled: !hasSelectedSettings || currentAfterTestingSetting || isRefreshingFirmware,
             testing: currentAfterTestingSetting,
           }"
         >
@@ -508,8 +508,9 @@
 </template>
 
 <script>
-import { file_save, start_test } from "@/api";
+import { file_save, start_test, fw_update } from "@/api";
 import { ElNotification } from "element-plus";
+import 'element-plus/dist/index.css'  // 使用ElNotification必须引入样式文件！
 // 添加delay函数
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -781,13 +782,20 @@ export default {
         // 示例代码，需要根据实际API调整
         this.addLog("├── 开始刷新BMC固件...");
 
-        // 模拟刷新过程
-        await delay(2000);
+        const userInfo = localStorage.getItem("user_info");
+        const user = JSON.parse(userInfo);
+        const username = user.username;
+        const bmc_ip = user.bmc_ip;
+        const bmc_username = user.bmc_username;
+        const bmc_password = user.bmc_password;
+        await fw_update(
+          bmc_ip, bmc_username, bmc_password, username
+        )
 
-        this.addLog("└── BMC固件刷新完成");
+        this.addLog("└── BMC固件刷新成功");
         ElNotification({
           title: "成功",
-          message: "BMC固件刷新完成",
+          message: "BMC固件刷新成功，请等待BMC恢复",
           type: "success",
         });
       } catch (error) {

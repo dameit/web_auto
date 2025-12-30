@@ -138,3 +138,23 @@ export const start_test = async (ip, username, password, test_cases, is_before) 
   }
 }
 
+// 更新bmc fw API
+export const fw_update = async (bmc_ip, bmc_username, bmc_password, username) => {
+  try {
+    const response = await apiClient.post('/test_cases/fw_update', {
+      'bmc_ip': bmc_ip,
+      'bmc_username': bmc_username,
+      'bmc_password': bmc_password,
+      'username': username
+    },
+    {
+      timeout : 120000,
+    })
+
+    // response.data 是从后端收到的 jsonify()
+    return response.data
+  } catch (error) {
+    throw new Error(error.response?.data?.message || '更新BMC固件失败')
+  }
+}
+
