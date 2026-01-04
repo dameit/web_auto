@@ -357,14 +357,14 @@ def fw_update():
     ImageURI = f"/tmp/{ImageURI[-1]}"
     task_api = all_config.get("redfish_path", "task_api")
     try:
-        redfish_update_fw(bmc_ip, bmc_username, bmc_password, session_api, \
+        if redfish_update_fw(bmc_ip, bmc_username, bmc_password, session_api, \
                         localFile_upload_api, file_save_path, \
                         update_api, update_target, ImageURI, \
-                        task_api)
-        return jsonify({
-            'success': True, 
-            'message': '更新BMC固件成功',
-        }), 200
+                        task_api):
+            return jsonify({
+                'success': True, 
+                'message': '更新BMC固件成功',
+            }), 200
     except Exception as e:
         print(e)
         return jsonify({'success': False, 'message': '更新BMC固件失败'}), 400

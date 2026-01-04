@@ -795,7 +795,7 @@ export default {
         this.addLog("└── BMC固件刷新成功");
         ElNotification({
           title: "成功",
-          message: "BMC固件刷新成功，请等待BMC恢复",
+          message: "BMC固件刷新成功，已成功恢复",
           type: "success",
         });
       } catch (error) {

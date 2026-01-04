@@ -148,7 +148,7 @@ export const fw_update = async (bmc_ip, bmc_username, bmc_password, username) =>
       'username': username
     },
     {
-      timeout : 120000,
+      timeout : 600000,
     })
 
     // response.data 是从后端收到的 jsonify()
