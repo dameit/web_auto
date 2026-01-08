@@ -4,6 +4,7 @@ import login from '../pages/login.vue'
 import register from '../pages/register.vue'
 import home from '../pages/home.vue'
 import test_cases_save from '@/pages/test_cases_save.vue'
+import moniter from '@/pages/moniter.vue'
 
 const routes = [
   {
@@ -30,6 +31,11 @@ const routes = [
   {
     path: '/test-cases/save',
     component: test_cases_save
+  },
+
+  {
+    path: '/moniter',
+    component: moniter
   }
 ]
 

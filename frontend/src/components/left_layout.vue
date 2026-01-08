@@ -57,10 +57,10 @@
             </div>
           </router-link>
 
-          <router-link to="/reports" class="nav-item" active-class="active">
+          <router-link to="/moniter" class="nav-item" active-class="active">
             <div class="nav-item-content">
               <span class="nav-icon">📊</span>
-              <span class="nav-text">测试报告</span>
+              <span class="nav-text">健康监测</span>
             </div>
           </router-link>
         </nav>
