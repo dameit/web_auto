@@ -1099,8 +1099,8 @@ export default {
     updateDiskMetrics(monitor_data) {
       // 使用后端返回的实际数据
       this.diskMetrics.current = monitor_data["disk_used"];
-      this.diskMetrics.total = monitor_data["disk_total"]
-      this.diskMetrics.used = monitor_data["disk_isused"];
+      this.diskMetrics.total = parseFloat(monitor_data["disk_total"])
+      this.diskMetrics.used = parseFloat(monitor_data["disk_isused"]);
       this.diskMetrics.free = this.diskMetrics.total - this.diskMetrics.used;
       this.diskMetrics.trend = this.calculateTrend(
         this.diskMetrics.history,
@@ -1671,12 +1671,18 @@ export default {
   font-size: 13px;
   color: #64748b;
   font-weight: 500;
+  min-width: 60px; /* 固定标签宽度 */
+  flex-shrink: 0;
 }
 
 .detail-value {
   font-size: 13px;
   color: #1e293b;
   font-weight: 600;
+  flex: 1;
+  text-align: right; /* CPU型号右对齐 */
+  word-break: break-all; /* 长文本自动换行 */
+  overflow-wrap: break-word;
 
   &.temp-critical {
     color: #ef4444;
