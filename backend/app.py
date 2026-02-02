@@ -368,3 +368,76 @@ def fw_update():
     except Exception as e:
         print(e)
         return jsonify({'success': False, 'message': '更新BMC固件失败'}), 400
+
+@app.route('/api/monitor_update', methods=['POST'])
+def monitor_update():
+    data = request.get_json()
+
+    # 从前端获取os_ip,os_username,os_password
+    os_ip = data.get('os_ip', '').strip()
+    os_username = data.get('os_username', '').strip()
+    os_password = data.get('os_password', '').strip()
+
+    is_ssh_connected, client = ssh_connect(os_ip, os_username, os_password)
+    if is_ssh_connected:
+        monitor_data = {}
+        try:
+            # 获取cpu资源信息
+            # cpu占用率
+            _, cpu_used, _ = client.exec_command("top -bn1 | grep 'Cpu(s)' | awk '{print $2}' | cut -d'%' -f1")
+            cpu_used = cpu_used.read().decode()
+            monitor_data["cpu_used"] = cpu_used
+            # cpu型号
+            _, cpu_model, _ = client.exec_command("cat /proc/cpuinfo | grep \"model name\" | uniq | awk -F': ' '{print $2}'")
+            cpu_model = cpu_model.read().decode()
+            monitor_data["cpu_model"] = cpu_model
+            # cpu核数
+            _, cpu_cores, _ = client.exec_command("grep 'physical id' /proc/cpuinfo | sort -u | wc -l")
+            cpu_cores = cpu_cores.read().decode()
+            monitor_data["cpu_cores"] = cpu_cores
+            # cpu主频
+            _, cpu_frequency, _ = client.exec_command("lscpu | grep \"MHz\" | awk '{print $3}' | cut -d. -f1")
+            cpu_frequency = cpu_frequency.read().decode()
+            monitor_data["cpu_frequency"] = cpu_frequency
+
+            # 获取内存资源信息
+            # 内存使用率
+            _, mem_used, _ = client.exec_command("free | grep Mem | awk '{printf \"%.1f\", $3/$2 * 100}'")
+            mem_used = mem_used.read().decode()
+            monitor_data["mem_used"] = mem_used
+            # 内存总容量
+            _, mem_total, _ = client.exec_command("free | grep Mem | awk '{printf \"%.1f\", $2/1024/1024}'")
+            mem_total = mem_total.read().decode()
+            monitor_data["mem_total"] = mem_total
+            # 内存已使用容量
+            _, mem_isused, _ = client.exec_command("free | grep Mem | awk '{printf \"%.1f\", $3/1024/1024}'")
+            mem_isused = mem_isused.read().decode()
+            monitor_data["mem_isused"] = mem_isused
+
+            # 获取硬盘资源信息
+            # 硬盘使用率
+            _, disk_used, _ = client.exec_command("df -h / | awk 'NR==2 {print $5}' | cut -d'%' -f1")
+            disk_used = disk_used.read().decode()
+            monitor_data["disk_used"] = disk_used
+            # 硬盘总容量
+            _, disk_total, _ = client.exec_command("df -h / | awk 'NR==2 {print $2}' | cut -d'G' -f1")
+            disk_total = disk_total.read().decode()
+            monitor_data["disk_total"] = disk_total
+            # 硬盘已使用容量
+            _, disk_isused, _ = client.exec_command("df -h / | awk 'NR==2 {print $3}' | cut -d'G' -f1")
+            disk_isused = disk_isused.read().decode()
+            monitor_data["disk_isused"] = disk_isused
+
+            # 关闭ssh连接
+            client.close()
+
+            return jsonify({
+                    'success': True, 
+                    'message': '更新系统资源信息成功',
+                    'monitor_data': monitor_data
+                }), 200
+
+        except Exception as e:
+            return jsonify({'success': False, 'message': '获取系统资源信息失败', 'error': str(e)}), 400
+    else:
+        return jsonify({'success':False, 'message':"连接OS失败"}), 400

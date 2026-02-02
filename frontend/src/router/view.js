@@ -4,7 +4,7 @@ import login from '../pages/login.vue'
 import register from '../pages/register.vue'
 import home from '../pages/home.vue'
 import test_cases_save from '@/pages/test_cases_save.vue'
-import moniter from '@/pages/moniter.vue'
+import monitor from '@/pages/monitor.vue'
 
 const routes = [
   {
@@ -34,8 +34,8 @@ const routes = [
   },
 
   {
-    path: '/moniter',
-    component: moniter
+    path: '/monitor',
+    component: monitor
   }
 ]
 

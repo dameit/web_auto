@@ -158,3 +158,22 @@ export const fw_update = async (bmc_ip, bmc_username, bmc_password, username) =>
   }
 }
 
+// *************************************************************************************************************
+// ********************************************** 监控相关API **************************************************
+// *************************************************************************************************************
+
+// 实时更新监控数值
+export const monitor_update = async (os_ip, os_username, os_password) => {
+  try {
+    const response = await apiClient.post('/monitor_update', {
+      'os_ip': os_ip,
+      'os_username': os_username,
+      'os_password': os_password,
+    },)
+    // response.data 是从后端收到的 jsonify()
+    return response.data
+  } catch (error) {
+    throw new Error(error.response?.data?.message || '从后端获取系统资源信息失败')
+  }
+}
+

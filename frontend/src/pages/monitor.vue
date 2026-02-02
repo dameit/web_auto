@@ -6,10 +6,6 @@
         <!-- IP信息 -->
         <div class="ip-info-row">
           <div class="ip-display">
-            <span class="ip-label">BMC IP:</span>
-            <span class="ip-value">{{ bmcIp }}</span>
-          </div>
-          <div class="ip-display">
             <span class="ip-label">OS IP:</span>
             <span class="ip-value">{{ osIp }}</span>
           </div>
@@ -76,7 +72,6 @@
               <div class="gauge-container">
                 <div class="gauge-chart" ref="cpuGauge"></div>
                 <div class="gauge-value">
-                  <span class="value-number">{{ cpuMetrics.current }}%</span>
                   <span class="value-label">当前使用率</span>
                 </div>
               </div>
@@ -87,16 +82,11 @@
                 </div>
                 <div class="detail-item">
                   <span class="detail-label">频率:</span>
-                  <span class="detail-value">{{ cpuMetrics.frequency }}</span>
+                  <span class="detail-value">{{ cpuMetrics.frequency }}MHz</span>
                 </div>
                 <div class="detail-item">
-                  <span class="detail-label">温度:</span>
-                  <span
-                    class="detail-value"
-                    :class="getTemperatureClass(cpuMetrics.temperature)"
-                  >
-                    {{ cpuMetrics.temperature }}°C
-                  </span>
+                  <span class="detail-label">型号:</span>
+                  <span class="detail-value">{{ cpuMetrics.model }}</span>
                 </div>
               </div>
             </div>
@@ -140,29 +130,25 @@
             <div class="metric-display">
               <div class="gauge-container">
                 <div class="gauge-chart" ref="memoryGauge"></div>
-                <div class="gauge-value">
-                  <span class="value-number">{{ memoryMetrics.current }}%</span>
-                  <span class="value-label">当前使用率</span>
-                </div>
               </div>
               <div class="metric-details">
                 <div class="detail-item">
                   <span class="detail-label">总内存:</span>
                   <span class="detail-value">{{
-                    formatBytes(memoryMetrics.total)
-                  }}</span>
+                    memoryMetrics.total
+                  }}GB</span>
                 </div>
                 <div class="detail-item">
                   <span class="detail-label">已使用:</span>
                   <span class="detail-value">{{
-                    formatBytes(memoryMetrics.used)
-                  }}</span>
+                    memoryMetrics.used
+                  }}GB</span>
                 </div>
                 <div class="detail-item">
                   <span class="detail-label">可用:</span>
                   <span class="detail-value">{{
-                    formatBytes(memoryMetrics.available)
-                  }}</span>
+                    memoryMetrics.available
+                  }}GB</span>
                 </div>
               </div>
             </div>
@@ -214,21 +200,15 @@
               <div class="metric-details">
                 <div class="detail-item">
                   <span class="detail-label">总空间:</span>
-                  <span class="detail-value">{{
-                    formatBytes(diskMetrics.total)
-                  }}</span>
+                  <span class="detail-value">{{ diskMetrics.total }}GB</span>
                 </div>
                 <div class="detail-item">
                   <span class="detail-label">已使用:</span>
-                  <span class="detail-value">{{
-                    formatBytes(diskMetrics.used)
-                  }}</span>
+                  <span class="detail-value">{{ diskMetrics.used }}GB</span>
                 </div>
                 <div class="detail-item">
                   <span class="detail-label">可用:</span>
-                  <span class="detail-value">{{
-                    formatBytes(diskMetrics.free)
-                  }}</span>
+                  <span class="detail-value">{{ diskMetrics.free }}GB</span>
                 </div>
               </div>
             </div>
@@ -421,6 +401,7 @@
 // npm install echarts@5.4.3 echarts-liquidfill@3.1.0 --save
 import * as echarts from "echarts";
 import "echarts-liquidfill";
+import { monitor_update } from "@/api"
 
 export default {
   name: "HealthMonitoring",
@@ -437,11 +418,11 @@ export default {
 
       // CPU指标数据
       cpuMetrics: {
-        current: 45.2,
+        current: null,
         trend: "stable",
-        cores: 8,
-        frequency: "3.6GHz",
-        temperature: 65,
+        cores: null,
+        frequency: null,
+        model: null,
         warningThreshold: 80,
         history: [],
         lastUpdate: new Date(),
@@ -449,11 +430,11 @@ export default {
 
       // 内存指标数据
       memoryMetrics: {
-        current: 67.8,
+        current: null,
         trend: "rising",
-        total: 16 * 1024 * 1024 * 1024, // 16GB in bytes
-        used: 10.8 * 1024 * 1024 * 1024, // 10.8GB
-        available: 5.2 * 1024 * 1024 * 1024, // 5.2GB
+        total: null,
+        used: null,
+        available: null,
         warningThreshold: 85,
         history: [],
         lastUpdate: new Date(),
@@ -461,11 +442,11 @@ export default {
 
       // 硬盘指标数据
       diskMetrics: {
-        current: 52.3,
+        current: null,
         trend: "stable",
-        total: 512 * 1024 * 1024 * 1024, // 512GB
-        used: 268 * 1024 * 1024 * 1024, // 268GB
-        free: 244 * 1024 * 1024 * 1024, // 244GB
+        total: null,
+        used: null,
+        free: null,
         warningThreshold: 90,
         history: [],
         lastUpdate: new Date(),
@@ -711,7 +692,7 @@ export default {
         series: [
           {
             type: "liquidFill",
-            data: [this.cpuMetrics.current / 100],
+            data: [this.memoryMetrics.current / 100],
             radius: "80%",
             center: ["50%", "50%"],
             backgroundStyle: {
@@ -1047,11 +1028,18 @@ export default {
     },
 
     // 刷新所有指标
-    refreshMetrics() {
+    async refreshMetrics() {
+      const userInfo = localStorage.getItem("user_info");
+      const user = JSON.parse(userInfo);
+      const os_ip = user.os_ip;
+      const os_username = user.os_username;
+      const os_password = user.os_password;
+      const all_monitor_data = await monitor_update(os_ip, os_username, os_password);
+      const monitor_data = all_monitor_data['monitor_data']
       // 模拟数据更新
-      this.updateCpuMetrics();
-      this.updateMemoryMetrics();
-      this.updateDiskMetrics();
+      this.updateCpuMetrics(monitor_data);
+      this.updateMemoryMetrics(monitor_data);
+      this.updateDiskMetrics(monitor_data);
       this.updateNetworkMetrics();
       this.updateLoadMetrics();
       this.updateProcesses();
@@ -1064,13 +1052,11 @@ export default {
     },
 
     // 更新CPU指标
-    updateCpuMetrics() {
-      const change = (Math.random() - 0.5) * 10;
-      this.cpuMetrics.current = Math.max(
-        0,
-        Math.min(100, this.cpuMetrics.current + change)
-      );
-      this.cpuMetrics.temperature = 50 + Math.random() * 30;
+    updateCpuMetrics(monitor_data) {
+      this.cpuMetrics.current = monitor_data["cpu_used"];
+      this.cpuMetrics.model = monitor_data["cpu_model"];
+      this.cpuMetrics.cores = monitor_data["cpu_cores"];
+      this.cpuMetrics.frequency = monitor_data["cpu_frequency"];
       this.cpuMetrics.trend = this.calculateTrend(
         this.cpuMetrics.history,
         this.cpuMetrics.current
@@ -1088,16 +1074,11 @@ export default {
     },
 
     // 更新内存指标
-    updateMemoryMetrics() {
-      const change = (Math.random() - 0.5) * 5;
-      this.memoryMetrics.current = Math.max(
-        0,
-        Math.min(100, this.memoryMetrics.current + change)
-      );
-      this.memoryMetrics.used =
-        this.memoryMetrics.total * (this.memoryMetrics.current / 100);
-      this.memoryMetrics.available =
-        this.memoryMetrics.total - this.memoryMetrics.used;
+    updateMemoryMetrics(monitor_data) {
+      this.memoryMetrics.current = monitor_data["mem_used"];
+      this,this.memoryMetrics.total = monitor_data["mem_total"];
+      this.memoryMetrics.used = monitor_data["mem_isused"];
+      this.memoryMetrics.available = monitor_data["mem_total"] - monitor_data["mem_isused"];
       this.memoryMetrics.trend = this.calculateTrend(
         this.memoryMetrics.history,
         this.memoryMetrics.current
@@ -1115,14 +1096,11 @@ export default {
     },
 
     // 更新硬盘指标
-    updateDiskMetrics() {
-      const change = (Math.random() - 0.5) * 3;
-      this.diskMetrics.current = Math.max(
-        0,
-        Math.min(100, this.diskMetrics.current + change)
-      );
-      this.diskMetrics.used =
-        this.diskMetrics.total * (this.diskMetrics.current / 100);
+    updateDiskMetrics(monitor_data) {
+      // 使用后端返回的实际数据
+      this.diskMetrics.current = monitor_data["disk_used"];
+      this.diskMetrics.total = monitor_data["disk_total"]
+      this.diskMetrics.used = monitor_data["disk_isused"];
       this.diskMetrics.free = this.diskMetrics.total - this.diskMetrics.used;
       this.diskMetrics.trend = this.calculateTrend(
         this.diskMetrics.history,
