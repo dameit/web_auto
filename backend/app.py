@@ -1,3 +1,5 @@
+from inspect import cleandoc
+from operator import is_
 from flask import Flask, request, jsonify
 from flask_cors import CORS  # 处理跨域请求
 import mysql.connector
@@ -427,6 +429,62 @@ def monitor_update():
             _, disk_isused, _ = client.exec_command("df -h / | awk 'NR==2 {print $3}' | cut -d'G' -f1")
             disk_isused = disk_isused.read().decode()
             monitor_data["disk_isused"] = disk_isused
+
+            # 获取硬盘并使用iostat读取硬盘读写
+            # sysstat下载网址: https://sysstat.github.io/
+            _, is_iostat_exist, _ = client.exec_command("which iostat")
+            is_iostat_exist = is_iostat_exist.read().decode()
+            if is_iostat_exist == "":
+                client.exec_command("mkdir -p /root/sysstat") 
+                with client.open_sftp() as sftp:
+                    # 上传本地文件到远程服务器
+                    remote_path = "/root/sysstat/sysstat-12.7.9.tar.gz"
+                    local_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "linux_package", "sysstat-12.7.9.tar.gz")
+                    sftp.put(local_file_path, remote_path)
+                    print(f"文件 {local_file_path} 已成功上传到 {remote_path}")
+                    # 解压并安装sysstat
+                    print("开始解压sysstat...")
+                    stdin, stdout, stderr = client.exec_command("cd /root/sysstat && tar -zxvf sysstat-12.7.9.tar.gz", timeout=30)
+                    unpack_error = stderr.read().decode()
+                    print("解压错误:", unpack_error)
+                    
+                    # 检查解压是否成功
+                    print("开始configure...")
+                    stdin, stdout, stderr = client.exec_command("cd /root/sysstat/sysstat-12.7.9 && ./configure", timeout=60)
+                    configure_error = stderr.read().decode()
+                    print("configure错误:", configure_error)
+                    
+                    # 编译
+                    print("开始编译...")
+                    stdin, stdout, stderr = client.exec_command("cd /root/sysstat/sysstat-12.7.9 && make", timeout=120)
+                    make_error = stderr.read().decode()
+                    print("make错误:", make_error)
+                    
+                    # 安装
+                    print("开始安装...")
+                    stdin, stdout, stderr = client.exec_command("cd /root/sysstat/sysstat-12.7.9 && make install", timeout=120)
+                    install_error = stderr.read().decode()
+                    print("install错误:", install_error)
+                    
+                    # 创建软连接
+                    print("创建软连接...")
+                    _, stdout, _ = client.exec_command("ln -sf /usr/local/bin/iostat /usr/bin/iostat")
+                    link_result = stdout.read().decode()
+                    print("软连接结果:", link_result)
+            else:
+                _, disks, _ = client.exec_command("lsblk -d -n -o NAME")
+                disks = disks.read().decode()
+                disks = disks.strip().split('\n')
+                _, disks_info, _ = client.exec_command("iostat -h  | awk '$8 ~/^[a-z]+[0-9]+/ {printf \"%s %s %s %s %s\\n\",  $8,  $2,  $3,  $5,  $6}'")
+                disks_info = disks_info.read().decode()
+                disks_info = disks_info.strip().split('\n')
+                disks_info_all = {}
+                for disk in disks_info:
+                    disk = disk.split(' ')
+                    disks_info_all[disk[0]] = disk[1:]
+                monitor_data["disks_info_all"] = disks_info_all
+                monitor_data["disks"] = list(monitor_data["disks_info_all"].keys())
+                print(monitor_data["disks_info_all"])
 
             # 关闭ssh连接
             client.close()

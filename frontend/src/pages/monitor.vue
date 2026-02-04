@@ -82,7 +82,9 @@
                 </div>
                 <div class="detail-item">
                   <span class="detail-label">频率:</span>
-                  <span class="detail-value">{{ cpuMetrics.frequency }}MHz</span>
+                  <span class="detail-value"
+                    >{{ cpuMetrics.frequency }}MHz</span
+                  >
                 </div>
                 <div class="detail-item">
                   <span class="detail-label">型号:</span>
@@ -90,7 +92,11 @@
                 </div>
               </div>
             </div>
-            <div class="trend-chart" ref="cpuTrend"></div>
+            <div
+              class="trend-chart"
+              :class="{ 'no-data': cpuMetrics.history.length === 0 }"
+              ref="cpuTrend"
+            ></div>
           </div>
           <div class="card-footer">
             <div
@@ -134,25 +140,25 @@
               <div class="metric-details">
                 <div class="detail-item">
                   <span class="detail-label">总内存:</span>
-                  <span class="detail-value">{{
-                    memoryMetrics.total
-                  }}GB</span>
+                  <span class="detail-value">{{ memoryMetrics.total }}GB</span>
                 </div>
                 <div class="detail-item">
                   <span class="detail-label">已使用:</span>
-                  <span class="detail-value">{{
-                    memoryMetrics.used
-                  }}GB</span>
+                  <span class="detail-value">{{ memoryMetrics.used }}GB</span>
                 </div>
                 <div class="detail-item">
                   <span class="detail-label">可用:</span>
-                  <span class="detail-value">{{
-                    memoryMetrics.available
-                  }}GB</span>
+                  <span class="detail-value"
+                    >{{ memoryMetrics.available }}GB</span
+                  >
                 </div>
               </div>
             </div>
-            <div class="trend-chart" ref="memoryTrend"></div>
+            <div
+              class="trend-chart"
+              :class="{ 'no-data': memoryMetrics.history.length === 0 }"
+              ref="memoryTrend"
+            ></div>
           </div>
           <div class="card-footer">
             <div
@@ -212,7 +218,11 @@
                 </div>
               </div>
             </div>
-            <div class="trend-chart" ref="diskTrend"></div>
+            <div
+              class="trend-chart"
+              :class="{ 'no-data': diskMetrics.history.length === 0 }"
+              ref="diskTrend"
+            ></div>
           </div>
           <div class="card-footer">
             <div
@@ -237,39 +247,56 @@
       </div>
     </div>
 
-    <!-- 网络和系统信息 -->
+    <!-- 系统信息 -->
     <div class="system-info-section">
       <div class="info-grid">
-        <!-- 网络监控 -->
-        <div class="info-card network-card">
+        <!-- 硬盘读写监控 -->
+        <div class="info-card disk-io-card">
           <div class="card-header">
             <div class="card-title">
-              <span class="card-icon">🌐</span>
-              <h3 class="card-title-text">网络监控</h3>
+              <span class="card-icon">📊</span>
+              <h3 class="card-title-text">硬盘读写监控</h3>
+            </div>
+            <div class="card-actions">
+              <span class="last-update"
+                >更新: {{ formatTime(diskIOMetrics.lastUpdate) }}</span
+              >
             </div>
           </div>
           <div class="card-body">
-            <div class="network-stats">
-              <div class="network-stat">
-                <span class="stat-label">上传速度:</span>
-                <span class="stat-value">{{ networkMetrics.uploadSpeed }}</span>
+            <div class="disk-selector">
+              <label for="disk-select">选择硬盘:</label>
+              <select
+                id="disk-select"
+                v-model="selectedDisk"
+                class="disk-select"
+                @change="updateDiskIOChart"
+              >
+                <option value="">请选择硬盘</option>
+                <option v-for="disk in diskList" :key="disk" :value="disk">
+                  {{ disk }}
+                </option>
+              </select>
+            </div>
+            <div class="disk-io-stats">
+              <div class="disk-io-stat">
+                <span class="stat-label">读取速度:</span>
+                <span class="stat-value">{{ diskIOMetrics.readSpeed }}/s</span>
               </div>
-              <div class="network-stat">
-                <span class="stat-label">下载速度:</span>
-                <span class="stat-value">{{
-                  networkMetrics.downloadSpeed
-                }}</span>
+              <div class="disk-io-stat">
+                <span class="stat-label">写入速度:</span>
+                <span class="stat-value">{{ diskIOMetrics.writeSpeed }}/s</span>
               </div>
-              <div class="network-stat">
-                <span class="stat-label">连接数:</span>
-                <span class="stat-value">{{ networkMetrics.connections }}</span>
+              <div class="disk-io-stat">
+                <span class="stat-label">读取总量:</span>
+                <span class="stat-value">{{ diskIOMetrics.readCount }}</span>
               </div>
-              <div class="network-stat">
-                <span class="stat-label">延迟:</span>
-                <span class="stat-value">{{ networkMetrics.latency }}ms</span>
+              <div class="disk-io-stat">
+                <span class="stat-label">写入总量:</span>
+                <span class="stat-value">{{ diskIOMetrics.writeCount }}</span>
               </div>
             </div>
-            <div class="network-chart" ref="networkChart"></div>
+            <div class="disk-io-chart" ref="diskIOChart"></div>
           </div>
         </div>
 
@@ -277,8 +304,13 @@
         <div class="info-card load-card">
           <div class="card-header">
             <div class="card-title">
-              <span class="card-icon">📊</span>
+              <span class="card-icon">📈</span>
               <h3 class="card-title-text">系统负载</h3>
+            </div>
+            <div class="card-actions">
+              <span class="last-update"
+                >更新: {{ formatTime(loadMetrics.lastUpdate) }}</span
+              >
             </div>
           </div>
           <div class="card-body">
@@ -328,8 +360,13 @@
         <div class="info-card processes-card">
           <div class="card-header">
             <div class="card-title">
-              <span class="card-icon">📈</span>
+              <span class="card-icon">⚙️</span>
               <h3 class="card-title-text">进程监控</h3>
+            </div>
+            <div class="card-actions">
+              <span class="last-update"
+                >更新: {{ formatTime(processesMetrics.lastUpdate) }}</span
+              >
             </div>
           </div>
           <div class="card-body">
@@ -401,7 +438,7 @@
 // npm install echarts@5.4.3 echarts-liquidfill@3.1.0 --save
 import * as echarts from "echarts";
 import "echarts-liquidfill";
-import { monitor_update } from "@/api"
+import { monitor_update } from "@/api";
 
 export default {
   name: "HealthMonitoring",
@@ -452,14 +489,19 @@ export default {
         lastUpdate: new Date(),
       },
 
-      // 网络指标数据
-      networkMetrics: {
-        uploadSpeed: "2.4 Mbps",
-        downloadSpeed: "15.6 Mbps",
-        connections: 42,
-        latency: 24,
+      // 硬盘读写监控数据
+      diskIOMetrics: {
+        readSpeed: 0,
+        writeSpeed: 0,
+        readCount: 0,
+        writeCount: 0,
+        lastUpdate: new Date(),
         history: [],
       },
+
+      // 硬盘列表
+      diskList: [],
+      selectedDisk: "",
 
       // 系统负载数据
       loadMetrics: {
@@ -467,6 +509,12 @@ export default {
         load5: 1.8,
         load15: 1.5,
         history: [],
+        lastUpdate: new Date(),
+      },
+
+      // 进程监控数据
+      processesMetrics: {
+        lastUpdate: new Date(),
       },
 
       // 进程列表
@@ -478,23 +526,8 @@ export default {
         { name: "docker", cpu: 2.1, memory: 3.4, status: "running" },
       ],
 
-      // 警报列表
-      alerts: [
-        {
-          id: 1,
-          level: "warning",
-          title: "内存使用率偏高",
-          message: "当前内存使用率已达 67.8%",
-          time: new Date(Date.now() - 15 * 60000),
-        },
-        {
-          id: 2,
-          level: "info",
-          title: "系统运行正常",
-          message: "所有指标均在正常范围内",
-          time: new Date(Date.now() - 30 * 60000),
-        },
-      ],
+      // 警报列表 - 初始为空，只在实际出现问题时添加
+      alerts: [],
 
       // ECharts实例
       charts: {},
@@ -515,7 +548,8 @@ export default {
   mounted() {
     this.initCharts();
     this.startAutoRefresh();
-    this.generateHistoryData();
+    // 首次加载数据
+    this.refreshMetrics();
   },
 
   beforeDestroy() {
@@ -552,9 +586,9 @@ export default {
       this.charts.diskTrend = echarts.init(this.$refs.diskTrend);
       this.updateDiskTrend();
 
-      // 网络图表
-      this.charts.network = echarts.init(this.$refs.networkChart);
-      this.updateNetworkChart();
+      // 硬盘读写图表
+      this.charts.diskIO = echarts.init(this.$refs.diskIOChart);
+      this.updateDiskIOChart();
 
       // 负载图表
       this.charts.load = echarts.init(this.$refs.loadChart);
@@ -569,8 +603,8 @@ export default {
             type: "gauge",
             center: ["50%", "60%"],
             radius: "90%",
-            startAngle: 180,
-            endAngle: 0,
+            startAngle: 220,
+            endAngle: -40,
             min: 0,
             max: 100,
             splitNumber: 10,
@@ -621,7 +655,7 @@ export default {
             },
             detail: {
               valueAnimation: true,
-              fontSize: 30,
+              fontSize: 25,
               offsetCenter: [0, "70%"],
             },
             data: [
@@ -638,10 +672,9 @@ export default {
 
     // 更新CPU趋势图
     updateCpuTrend() {
-      const data =
-        this.cpuMetrics.history.length > 0
-          ? this.cpuMetrics.history.map((h) => h.value)
-          : this.generateMockHistory(20, 30, 60);
+      // 只有当有历史数据时才显示趋势图
+      const hasData = this.cpuMetrics.history.length > 0;
+      const data = hasData ? this.cpuMetrics.history.map((h) => h.value) : [];
 
       const option = {
         tooltip: {
@@ -722,6 +755,12 @@ export default {
 
     // 更新内存趋势图
     updateMemoryTrend() {
+      // 只有当有历史数据时才显示趋势图
+      const hasData = this.memoryMetrics.history.length > 0;
+      const data = hasData
+        ? this.memoryMetrics.history.map((h) => h.value)
+        : [];
+
       const option = {
         tooltip: {
           trigger: "axis",
@@ -745,6 +784,7 @@ export default {
         },
         series: [
           {
+            data: data,
             type: "line",
             smooth: true,
             lineStyle: {
@@ -811,6 +851,10 @@ export default {
 
     // 更新硬盘趋势图
     updateDiskTrend() {
+      // 只有当有历史数据时才显示趋势图
+      const hasData = this.diskMetrics.history.length > 0;
+      const data = hasData ? this.diskMetrics.history.map((h) => h.value) : [];
+
       const option = {
         tooltip: {
           trigger: "axis",
@@ -834,6 +878,7 @@ export default {
         },
         series: [
           {
+            data: data,
             type: "line",
             smooth: true,
             lineStyle: {
@@ -853,55 +898,99 @@ export default {
       this.charts.diskTrend.setOption(option);
     },
 
-    // 更新网络图表
-    updateNetworkChart() {
+    // 更新硬盘读写图表
+    updateDiskIOChart() {
+      const hasData = this.diskIOMetrics.history.length > 0;
+      const readData = hasData
+        ? this.diskIOMetrics.history.map((h) => h.readSpeed)
+        : [];
+      const writeData = hasData
+        ? this.diskIOMetrics.history.map((h) => h.writeSpeed)
+        : [];
+
       const option = {
         tooltip: {
           trigger: "axis",
+          formatter: (params) => {
+            let result = "";
+            params.forEach((param) => {
+              const value = param.value || 0;
+              result += `${param.seriesName}: ${this.formatBytes(
+                value
+              )}/s<br/>`;
+            });
+            return result;
+          },
         },
         legend: {
-          show: false,
+          show: true,
+          bottom: 0,
+          data: ["读取速度", "写入速度"],
         },
         grid: {
-          left: "3%",
-          right: "3%",
-          bottom: "3%",
-          top: "3%",
+          left: "8%",
+          right: "8%",
+          bottom: "15%",
+          top: "5%",
           containLabel: true,
         },
         xAxis: {
           type: "category",
-          show: false,
+          show: true,
           boundaryGap: false,
+          data: hasData ? this.diskIOMetrics.history.map((h, i) => i + 1) : [],
+          axisLabel: {
+            fontSize: 10,
+            formatter: "第{value}次",
+          },
         },
         yAxis: {
           type: "value",
-          show: false,
+          show: true,
+          // --- 新增配置开始 ---
+          minInterval: 1, // 强制坐标轴分割的最小单位为1，防止出现 0.5, 0.1 等小于1的刻度
+          // --- 新增配置结束 ---
+          axisLabel: {
+            fontSize: 10,
+            formatter: (value) => {
+              return this.formatBytes(value);
+            },
+          },
         },
         series: [
           {
-            name: "上传",
+            name: "读取速度",
             type: "line",
             smooth: true,
+            data: readData,
             lineStyle: {
               width: 2,
               color: "#3B82F6",
             },
-            symbol: "none",
+            itemStyle: {
+              color: "#3B82F6",
+            },
+            symbol: "circle",
+            symbolSize: 4,
           },
           {
-            name: "下载",
+            name: "写入速度",
             type: "line",
             smooth: true,
+            data: writeData,
             lineStyle: {
               width: 2,
               color: "#10B981",
             },
-            symbol: "none",
+            itemStyle: {
+              color: "#10B981",
+            },
+            symbol: "circle",
+            symbolSize: 4,
           },
         ],
       };
-      this.charts.network.setOption(option);
+      this.charts.diskIO.setOption(option);
     },
 
     // 更新负载图表
@@ -969,33 +1058,6 @@ export default {
       return "#10B981";
     },
 
-    // 生成历史数据
-    generateHistoryData() {
-      // 生成CPU历史数据
-      this.cpuMetrics.history = this.generateMockHistory(20, 30, 60);
-
-      // 生成内存历史数据
-      this.memoryMetrics.history = this.generateMockHistory(20, 50, 70);
-
-      // 生成硬盘历史数据
-      this.diskMetrics.history = this.generateMockHistory(20, 40, 55);
-    },
-
-    // 生成模拟历史数据
-    generateMockHistory(count, min, max) {
-      const data = [];
-      const now = new Date();
-      for (let i = count; i >= 0; i--) {
-        const time = new Date(now.getTime() - i * 60000); // 每分钟一个点
-        const value = min + Math.random() * (max - min);
-        data.push({
-          time: time,
-          value: parseFloat(value.toFixed(1)),
-        });
-      }
-      return data;
-    },
-
     // 开始自动刷新
     startAutoRefresh() {
       if (this.refreshTimer) clearInterval(this.refreshTimer);
@@ -1034,13 +1096,26 @@ export default {
       const os_ip = user.os_ip;
       const os_username = user.os_username;
       const os_password = user.os_password;
-      const all_monitor_data = await monitor_update(os_ip, os_username, os_password);
-      const monitor_data = all_monitor_data['monitor_data']
-      // 模拟数据更新
+      const all_monitor_data = await monitor_update(
+        os_ip,
+        os_username,
+        os_password
+      );
+      const monitor_data = all_monitor_data["monitor_data"];
+
+      // 更新硬盘列表
+      this.updateDiskList(monitor_data);
+
+      // 更新各个指标
       this.updateCpuMetrics(monitor_data);
       this.updateMemoryMetrics(monitor_data);
       this.updateDiskMetrics(monitor_data);
-      this.updateNetworkMetrics();
+
+      // 如果有选中的硬盘，更新硬盘读写数据
+      if (this.selectedDisk) {
+        this.updateDiskIOMetrics(monitor_data);
+      }
+
       this.updateLoadMetrics();
       this.updateProcesses();
 
@@ -1049,6 +1124,18 @@ export default {
 
       // 检查警报
       this.checkAlerts();
+    },
+
+    // 更新硬盘列表
+    updateDiskList(monitor_data) {
+      if (monitor_data["disks"]) {
+        this.diskList = monitor_data["disks"];
+      }
+
+      // 如果还没有选择硬盘，默认选择第一个
+      if (!this.selectedDisk && this.diskList.length > 0) {
+        this.selectedDisk = this.diskList[0];
+      }
     },
 
     // 更新CPU指标
@@ -1076,9 +1163,11 @@ export default {
     // 更新内存指标
     updateMemoryMetrics(monitor_data) {
       this.memoryMetrics.current = monitor_data["mem_used"];
-      this,this.memoryMetrics.total = monitor_data["mem_total"];
+      this.memoryMetrics.total = monitor_data["mem_total"];
       this.memoryMetrics.used = monitor_data["mem_isused"];
-      this.memoryMetrics.available = monitor_data["mem_total"] - monitor_data["mem_isused"];
+      this.memoryMetrics.available = (
+        this.memoryMetrics.total - this.memoryMetrics.used
+      ).toFixed(1);
       this.memoryMetrics.trend = this.calculateTrend(
         this.memoryMetrics.history,
         this.memoryMetrics.current
@@ -1098,8 +1187,8 @@ export default {
     // 更新硬盘指标
     updateDiskMetrics(monitor_data) {
       // 使用后端返回的实际数据
-      this.diskMetrics.current = monitor_data["disk_used"];
-      this.diskMetrics.total = parseFloat(monitor_data["disk_total"])
+      this.diskMetrics.current = parseFloat(monitor_data["disk_used"]);
+      this.diskMetrics.total = parseFloat(monitor_data["disk_total"]);
       this.diskMetrics.used = parseFloat(monitor_data["disk_isused"]);
       this.diskMetrics.free = this.diskMetrics.total - this.diskMetrics.used;
       this.diskMetrics.trend = this.calculateTrend(
@@ -1118,16 +1207,28 @@ export default {
       }
     },
 
-    // 更新网络指标
-    updateNetworkMetrics() {
-      this.networkMetrics.uploadSpeed = `${(Math.random() * 5).toFixed(
-        1
-      )} Mbps`;
-      this.networkMetrics.downloadSpeed = `${(10 + Math.random() * 10).toFixed(
-        1
-      )} Mbps`;
-      this.networkMetrics.connections = 30 + Math.floor(Math.random() * 30);
-      this.networkMetrics.latency = 10 + Math.floor(Math.random() * 40);
+    // 更新硬盘读写指标
+    updateDiskIOMetrics(monitor_data) {
+      // 这里假设后端返回的数据中包含各个硬盘的读写数据
+      // 例如: monitor_data["disks_info_all"]: {'nvme0n1': ['10.5k', '13.4k', '2.0G', '2.5G'], 'sr0': ['0.0k', '0.0k', '2.0k', '0.0k']}
+      if (monitor_data["disks_info_all"][this.selectedDisk]) {
+        const diskData = monitor_data["disks_info_all"][this.selectedDisk];
+        this.diskIOMetrics.readSpeed = diskData[0];
+        this.diskIOMetrics.writeSpeed = diskData[1];
+        this.diskIOMetrics.readCount = diskData[2];
+        this.diskIOMetrics.writeCount = diskData[3];
+        this.diskIOMetrics.lastUpdate = new Date();
+
+        // 更新历史数据
+        this.diskIOMetrics.history.push({
+          time: new Date(),
+          readSpeed: parseFloat(this.diskIOMetrics.readSpeed),
+          writeSpeed: parseFloat(this.diskIOMetrics.writeSpeed),
+        });
+        if (this.diskIOMetrics.history.length > 20) {
+          this.diskIOMetrics.history.shift();
+        }
+      }
     },
 
     // 更新负载指标
@@ -1135,6 +1236,7 @@ export default {
       this.loadMetrics.load1 = Math.random() * 3;
       this.loadMetrics.load5 = Math.random() * 2.5;
       this.loadMetrics.load15 = Math.random() * 2;
+      this.loadMetrics.lastUpdate = new Date();
     },
 
     // 更新进程列表
@@ -1150,6 +1252,7 @@ export default {
           Math.min(100, process.memory + (Math.random() - 0.5) * 3)
         ),
       }));
+      this.processesMetrics.lastUpdate = new Date();
     },
 
     // 更新所有图表
@@ -1160,7 +1263,7 @@ export default {
       this.updateMemoryTrend();
       this.updateDiskGauge();
       this.updateDiskTrend();
-      this.updateNetworkChart();
+      this.updateDiskIOChart();
       this.updateLoadChart();
     },
 
@@ -1182,7 +1285,7 @@ export default {
         this.addAlert(
           "warning",
           "CPU使用率过高",
-          `当前CPU使用率已达 ${this.cpuMetrics.current.toFixed(1)}%`
+          `当前CPU使用率已达 ${this.cpuMetrics.current}%`
         );
       }
 
@@ -1201,15 +1304,6 @@ export default {
           "warning",
           "硬盘空间不足",
           `当前硬盘使用率已达 ${this.diskMetrics.current.toFixed(1)}%`
-        );
-      }
-
-      // 检查温度警报
-      if (this.cpuMetrics.temperature > 80) {
-        this.addAlert(
-          "critical",
-          "CPU温度过高",
-          `当前CPU温度已达 ${this.cpuMetrics.temperature}°C`
         );
       }
     },
@@ -1314,19 +1408,19 @@ export default {
     getTrendClass(trend) {
       return `trend-${trend}`;
     },
-
-    // 获取温度类名
-    getTemperatureClass(temp) {
-      if (temp > 80) return "temp-critical";
-      if (temp > 70) return "temp-warning";
-      return "temp-normal";
-    },
   },
 
   watch: {
     refreshInterval(newVal) {
       if (this.autoRefresh) {
         this.startAutoRefresh();
+      }
+    },
+    selectedDisk(newDisk) {
+      // 当选择新的硬盘时，清空历史数据并重新获取
+      this.diskIOMetrics.history = [];
+      if (newDisk) {
+        this.refreshMetrics();
       }
     },
   },
@@ -1683,23 +1777,28 @@ export default {
   text-align: right; /* CPU型号右对齐 */
   word-break: break-all; /* 长文本自动换行 */
   overflow-wrap: break-word;
-
-  &.temp-critical {
-    color: #ef4444;
-  }
-
-  &.temp-warning {
-    color: #f59e0b;
-  }
-
-  &.temp-normal {
-    color: #10b981;
-  }
 }
 
 .trend-chart {
   height: 80px;
   width: 100%;
+
+  // 当没有数据时的样式
+  &.no-data {
+    background: linear-gradient(90deg, #f8fafc 25%, #f1f5f9 50%, #f8fafc 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 4px;
+  }
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .card-footer {
@@ -1776,7 +1875,7 @@ export default {
   border: 1px solid #e2e8f0;
   border-top: 4px solid #f59e0b;
 
-  &.network-card {
+  &.disk-io-card {
     border-top-color: #3b82f6;
   }
 
@@ -1789,35 +1888,76 @@ export default {
   }
 }
 
-.network-stats {
+/* 硬盘读写监控卡片样式 */
+.disk-io-card .card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.disk-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  label {
+    font-size: 14px;
+    color: #64748b;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+}
+
+.disk-select {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #334155;
+  font-size: 14px;
+  min-width: 120px;
+  flex: 1;
+
+  &:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+}
+
+.disk-io-stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  margin-bottom: 20px;
 }
 
-.network-stat {
+.disk-io-stat {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px;
+  padding: 12px;
   background: #f8fafc;
   border-radius: 8px;
+  border: 1px solid #e2e8f0;
 }
 
-.stat-label {
+.disk-io-stat .stat-label {
   font-size: 13px;
   color: #64748b;
   font-weight: 500;
 }
 
-.stat-value {
+.disk-io-stat .stat-value {
   font-size: 13px;
   color: #1e293b;
   font-weight: 600;
 }
 
-.network-chart,
+.disk-io-chart {
+  height: 150px;
+  width: 100%;
+}
+
 .load-chart {
   height: 100px;
   width: 100%;
@@ -2169,6 +2309,10 @@ export default {
 
   .gauge-container {
     align-self: center;
+  }
+
+  .disk-io-stats {
+    grid-template-columns: 1fr;
   }
 
   .alert-item {
