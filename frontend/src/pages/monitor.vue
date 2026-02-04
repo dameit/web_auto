@@ -689,13 +689,34 @@ export default {
         },
         xAxis: {
           type: "category",
-          show: false,
-          boundaryGap: false,
+          // --- 修改开始 ---
+          show: true, // 改为 true 显示，或者 false 隐藏。建议显示以表明时间推移
+          axisLine: { show: true, lineStyle: { color: "#ccc" } }, // 显示X轴轴线
+          axisTick: { show: false }, // 隐藏刻度
+          axisLabel: {
+            color: "#666",
+            fontSize: 10,
+            formatter: "第{value}次", // 可以格式化为时间或次数
+          },
+          splitLine: { show: false }, // 隐藏X轴分割线
+          // --- 修改结束 ---
         },
         yAxis: {
           type: "value",
-          show: false,
-          max: 100,
+          // --- 修改开始 ---
+          max: 100, // 强制最大值为100%
+          min: 0, // 强制最小值为0%
+          splitNumber: 5, // 展示5个刻度（0, 25, 50, 75, 100）
+          axisLine: { show: true },
+          axisLabel: {
+            color: "#666",
+            formatter: "{value}%", // 添加百分号
+          },
+          splitLine: {
+            show: true,
+            lineStyle: { type: "dashed", color: "#eee" }, // 添加虚线网格
+          },
+          // --- 修改结束 ---
         },
         series: [
           {
@@ -774,13 +795,26 @@ export default {
         },
         xAxis: {
           type: "category",
-          show: false,
-          boundaryGap: false,
+          // --- 修改开始 ---
+          show: true,
+          axisLine: { show: true, lineStyle: { color: "#ccc" } },
+          axisTick: { show: false },
+          axisLabel: { color: "#666", fontSize: 10, formatter: "第{value}次"},
+          // --- 修改结束 ---
         },
         yAxis: {
           type: "value",
-          show: false,
+          // --- 修改开始 ---
           max: 100,
+          min: 0,
+          splitNumber: 5,
+          axisLine: { show: true },
+          axisLabel: { color: "#666", formatter: "{value}%" },
+          splitLine: {
+            show: true,
+            lineStyle: { type: "dashed", color: "#eee" },
+          },
+          // --- 修改结束 ---
         },
         series: [
           {
@@ -868,13 +902,34 @@ export default {
         },
         xAxis: {
           type: "category",
-          show: false,
-          boundaryGap: false,
+          // --- 修改开始 ---
+          // 如果你保留了原来的 "第{value}次" 格式，可以保留 formatter
+          axisLabel: {
+            fontSize: 10,
+            formatter: "第{value}次",
+            color: "#666",
+          },
+          axisLine: { show: true, lineStyle: { color: "#ccc" } },
+          axisTick: { show: false },
+          // --- 修改结束 ---
         },
         yAxis: {
           type: "value",
-          show: false,
+          // --- 修改开始 ---
           max: 100,
+          min: 0,
+          splitNumber: 5,
+          name: "使用率 (%)", // 添加Y轴名称
+          nameTextStyle: { fontSize: 12, color: "#666" },
+          axisLabel: {
+            color: "#666",
+            formatter: "{value}%",
+          },
+          splitLine: {
+            show: true,
+            lineStyle: { type: "dashed", color: "#eee" },
+          },
+          // --- 修改结束 ---
         },
         series: [
           {
