@@ -52,7 +52,7 @@ def redfish_update_fw(bmc_ip, bmc_username, bmc_password, session_api, \
     task_api = task_api.replace('ip', bmc_ip)
     task_api = task_api.replace('task_num', task_num) 
     while my_get(task_api, headers=headers).json().get("PercentComplete") < 100:
-        print(f"\rBMC固件更新中：{my_get(task_api, headers=headers).json().get("PercentComplete")} %", \
+        print(f"\rBMC固件更新中：{my_get(task_api, headers=headers).json().get('PercentComplete')} %", \
             end='', flush=True)
     print('\r')
 

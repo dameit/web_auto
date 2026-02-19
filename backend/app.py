@@ -496,6 +496,7 @@ def monitor_update():
                 }), 200
 
         except Exception as e:
+            print(f"获取系统资源信息失败: {str(e)}")
             return jsonify({'success': False, 'message': '获取系统资源信息失败', 'error': str(e)}), 400
     else:
         return jsonify({'success':False, 'message':"连接OS失败"}), 400
